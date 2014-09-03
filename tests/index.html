@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<title>Wormhole :: tests</title>
+
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+
+	<script src="http://code.jquery.com/qunit/qunit-git.js"></script>
+	<link href="http://code.jquery.com/qunit/qunit-git.css" rel="stylesheet"/>
+
+	<script>
+		if( !window.jQuery ){
+			document.write('<script src="/js/jquery.dev.js"><'+'/script>');
+			document.write('<script src="/js/qunit/qunit.js"><'+'/script>');
+			document.write('<link href="/js/qunit/qunit.css" rel="stylesheet"/>');
+		}
+	</script>
+
+</head>
+<body>
+
+	<div id="qunit"></div>
+	<div id="qunit-fixture"></div>
+
+	<script src="../wormhole.js"></script>
+	<script src="wormhole.tests.js"></script>
+	<script>
+		asyncTest('self', function () {
+			expect(0);
+
+			if (parent.resolveTest) {
+				start();
+				parent.resolveTest();
+			} else {
+				window.resolveTest = start;
+				$('<iframe src="' + location + '"/>').appendTo('body');
+			}
+		});
+	</script>
+</body>
+</html>

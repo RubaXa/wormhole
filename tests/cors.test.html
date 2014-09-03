@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<script src="../wormhole.js"></script>
+	<script>
+		(function (cors) {
+			cors.remote = function (data) {
+				data.bar = true;
+				data.value *= 2;
+
+				return data;
+			};
+
+			cors.on('data', function (data) {
+				cors(window.parent).send(data + '!');
+			});
+		})(wormhole.cors)
+	</script>
+</head>
+</html>
