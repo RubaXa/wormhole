@@ -30,10 +30,13 @@ module('wormhole');
 		var onBar = function (data) {
 			log.push('bar-' + data);
 		};
+		var onBaz = function () {
+			log.push('baz-' + [].slice.call(arguments, 0).join('.'));
+		};
 
 		emitter.on("foo", onFoo);
-
 		emitter.on("bar", onBar);
+		emitter.on("baz", onBaz);
 
 		emitter.emit("foo", 1);
 		emitter.emit("bar", 1);
@@ -46,7 +49,12 @@ module('wormhole');
 		emitter.emit("foo", 3);
 		emitter.emit("bar", 3);
 
-		equal(log + '', 'foo-1,bar-1,foo-2,bar-2,bar-3');
+		emitter.emit('baz');
+		emitter.emit('baz', [1, 2]);
+		emitter.emit('baz', [1, 2, 3]);
+		emitter.emit('baz', [1, 2, 3, 4, 5]);
+
+		equal(log + '', 'foo-1,bar-1,foo-2,bar-2,bar-3,baz-,baz-1.2,baz-1.2.3,baz-1.2.3.4.5');
 	});
 
 
@@ -63,15 +71,33 @@ module('wormhole');
 
 			cors(foo).send("Wow");
 
+			cors.well = function (data) {
+				log.push('well ' + data);
+			};
+
+			cors.fail = function () {
+				throw "error";
+			};
+
 			cors(bar).call('remote', { value: 321 }, function (err, response) {
 				log.push(response);
 			});
 
+			cors(bar).call('unknown', function (err) {
+				log.push(err);
+			});
+
+			cors(bar).call('fail', function (err) {
+				log.push(err);
+			});
 
 			setTimeout(function () {
 				deepEqual(log, [
 					'Wow!',
-					{ bar: true, value: 642 }
+					'well done',
+					{ bar: true, value: 642 },
+					'wormhole.cors.unknown: method not found',
+					'wormhole.cors.fail: remote error'
 				]);
 				start();
 			}, 10);

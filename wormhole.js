@@ -58,14 +58,30 @@
 		/**
 		 * Распространить данные
 		 * @param   {String}   name
-		 * @param   {*}        [data]
+		 * @param   {*}        [args]
 		 */
-		emit: function (name, data) {
+		emit: function (name, args) {
 			var listeners = getListeners(this, name),
-				i = listeners.length;
+				i = listeners.length,
+				nargs
+			;
+
+			args = args === void 0 ? [] : [].concat(args);
+			nargs = args.length;
 
 			while (i--) {
-				listeners[i].call(this, data);
+				if (nargs === 0) {
+					listeners[i].call(this);
+				}
+				else if (nargs === 1){
+					listeners[i].call(this, args[0]);
+				}
+				else if (nargs === 2){
+					listeners[i].call(this, args[0], args[1]);
+				}
+				else {
+					listeners[i].apply(this, args);
+				}
 			}
 		}
 	};
@@ -111,6 +127,11 @@
 
 	cors.fn = cors.prototype = {
 		call: function (cmd, data, callback) {
+			if (typeof data === 'function') {
+				callback = data;
+				data = void 0;
+			}
+
 			var evt = {
 				cmd: cmd,
 				data: data
@@ -138,7 +159,9 @@
 
 		var id,
 			resp = {},
-			data = evt.data;
+			data = evt.data,
+			source = evt.source,
+			func;
 
 		/* istanbul ignore else */
 		if (data.indexOf(_corsExpando) === 0) {
@@ -148,10 +171,8 @@
 				data = _parseJSON(evt.data.substr(_corsExpando.length));
 				id = data[_corsExpando];
 
-				/* istanbul ignore else */
 				if (id) {
 					// Это call или ответ на него
-					/* istanbul ignore else */
 					if (data.response) {
 						/* istanbul ignore else */
 						if (_corsCallback[id]) {
@@ -165,16 +186,22 @@
 						resp[_corsExpando] = id;
 
 						try {
-							resp.result = cors[data.cmd](data.data);
+							func = cors[data.cmd];
+
+							if (func) {
+								resp.result = func(data.data, source);
+							} else {
+								throw "method not found";
+							}
 						} catch (err) {
-							resp.error = err.toString();
+							resp.error = 'wormhole.cors.' + data.cmd + ': ' + err.toString();
 						}
 
 						cors(evt.source).send(resp);
 					}
 				}
 				else {
-					cors.emit('data', data);
+					cors.emit('data', [data, source]);
 				}
 
 			}

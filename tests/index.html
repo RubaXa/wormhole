@@ -25,18 +25,6 @@
 
 	<script src="../wormhole.js"></script>
 	<script src="wormhole.tests.js"></script>
-	<script>
-		asyncTest('self', function () {
-			expect(0);
 
-			if (parent.resolveTest) {
-				start();
-				parent.resolveTest();
-			} else {
-				window.resolveTest = start;
-				$('<iframe src="' + location + '"/>').appendTo('body');
-			}
-		});
-	</script>
 </body>
 </html>

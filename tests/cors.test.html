@@ -5,15 +5,25 @@
 	<script src="../wormhole.js"></script>
 	<script>
 		(function (cors) {
-			cors.remote = function (data) {
+			cors.fail = function () {
+				throw "remote error";
+			};
+
+			cors.remote = function (data, source) {
 				data.bar = true;
 				data.value *= 2;
+
+				cors(source).call('well', 'done');
+
+				cors(source).call('fail');
+				cors(source).call('unknown');
 
 				return data;
 			};
 
-			cors.on('data', function (data) {
-				cors(window.parent).send(data + '!');
+
+			cors.on('data', function (data, source) {
+				cors(source).send(data + '!');
 			});
 		})(wormhole.cors)
 	</script>
