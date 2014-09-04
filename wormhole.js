@@ -16,6 +16,10 @@
 	}
 
 
+	/**
+	 * @class emitter
+	 * @desc  Микро-излучатель
+	 */
 	function emitter() {
 	}
 
@@ -87,6 +91,12 @@
 	};
 
 
+	/**
+	 * Подмешать методы
+	 * @method
+	 * @param   {*}  target
+	 * @returns {*}
+	 */
 	emitter.apply = function (target) {
 		target.on = emitter.fn.on;
 		target.off = emitter.fn.off;
@@ -109,6 +119,7 @@
 
 	/**
 	 * @class  cors
+	 * @desc   Обертка над postMessage
 	 * @param  {Window}  el
 	 */
 	function cors(el) {
@@ -125,7 +136,13 @@
 	}
 
 
-	cors.fn = cors.prototype = {
+	cors.fn = cors.prototype = /** @lends cors.prototype */ {
+		/**
+		 * Вызывать удаленную команду
+		 * @param {String}   cmd    команда
+		 * @param {*}        [data] данные
+		 * @param {Function} [callback] функция обратного вызова, получает: `error` и `result`
+		 */
 		call: function (cmd, data, callback) {
 			if (typeof data === 'function') {
 				callback = data;
@@ -143,6 +160,11 @@
 			this.send(evt);
 		},
 
+
+		/**
+		 * Отправить даныне
+		 * @param {*} data
+		 */
 		send: function (data) {
 			this.window.postMessage(_corsExpando + _stringifyJSON(data), '*');
 		}
@@ -278,15 +300,31 @@
 
 
 	store = emitter.apply({
+		/**
+		 * Установить значение
+		 * @param {String} key
+		 * @param {*}      value
+		 */
 		set: function (key, value) {
 			_storageData[key] = value;
 			_storage && _storage.setItem(_storageKey(key), _stringifyJSON(value));
 		},
 
+
+		/**
+		 * Получить значение
+		 * @param   {String}  key
+		 * @returns {*}
+		 */
 		get: function (key) {
 			return _storageData[key];
 		},
 
+
+		/**
+		 * Удалить значение
+		 * @param  {String} key
+		 */
 		remove: function (key) {
 			delete _storageData[key];
 			_storage && _storage.removeItem(_storageKey(key));
@@ -294,6 +332,11 @@
 	});
 
 
+	/**
+	 * Обработчик обновления хранилища
+	 * @param evt
+	 * @private
+	 */
 	function _onsync(evt) {
 		var fullKey = evt.key,
 			key = _getCleanedKey(fullKey),
