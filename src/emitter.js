@@ -58,14 +58,30 @@ define([], function () {
 		/**
 		 * Распространить данные
 		 * @param   {String}   name
-		 * @param   {*}        [data]
+		 * @param   {*}        [args]
 		 */
-		emit: function (name, data) {
+		emit: function (name, args) {
 			var listeners = getListeners(this, name),
-				i = listeners.length;
+				i = listeners.length,
+				nargs
+			;
+
+			args = args === void 0 ? [] : [].concat(args);
+			nargs = args.length;
 
 			while (i--) {
-				listeners[i].call(this, data);
+				if (nargs === 0) {
+					listeners[i].call(this);
+				}
+				else if (nargs === 1){
+					listeners[i].call(this, args[0]);
+				}
+				else if (nargs === 2){
+					listeners[i].call(this, args[0], args[1]);
+				}
+				else {
+					listeners[i].apply(this, args);
+				}
 			}
 		}
 	};
