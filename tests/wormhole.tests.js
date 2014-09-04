@@ -21,6 +21,7 @@ module('wormhole');
 	}
 
 
+	// Излучатель: on/off/emit
 	test('emitter', function () {
 		var log = [];
 		var emitter = new wormhole.emitter;
@@ -58,39 +59,49 @@ module('wormhole');
 	});
 
 
+	// Взаимодействие с удаленным сервером
 	asyncTest('cors', function () {
 		var cors = wormhole.cors;
 
 
+		// Создаем два iframe
 		$.when(_createWin(), _createWin()).then(function (foo, bar) {
 			var log = [];
 
+			// Подписываемся по получение данных в текущем окне
 			cors.on('data', function (data) {
 				log.push(data);
 			});
 
+			// Отправляем данные в iframe
 			cors(foo).send("Wow");
 
+			// Определим команды, которые может вызвать удаленный сервер
 			cors.well = function (data) {
 				log.push('well ' + data);
 			};
 
+			// Команда с ошибокй
 			cors.fail = function () {
 				throw "error";
 			};
 
+			// Вызываем удаленную команду у iframe
 			cors(bar).call('remote', { value: 321 }, function (err, response) {
 				log.push(response);
 			});
 
+			// Вызываем неопределенную команду
 			cors(bar).call('unknown', function (err) {
 				log.push(err);
 			});
 
+			// Команду с ошибкой
 			cors(bar).call('fail', function (err) {
 				log.push(err);
 			});
 
+			// Проверям результат
 			setTimeout(function () {
 				deepEqual(log, [
 					'Wow!',
@@ -105,6 +116,7 @@ module('wormhole');
 	});
 
 
+	// Проверяем работу хранилища и его изменения
 	asyncTest('store', function () {
 		var log = [];
 		var store = wormhole.store;
@@ -112,28 +124,38 @@ module('wormhole');
 
 		store.set('rand', rand);
 
+		// Подписываемся на изменение данных
 		store.on('change', function (data) {
 			log.push('change');
 		});
 
+		// Подписываем на конкретный ключ
 		store.on('change:foo', function (val) {
 			log.push('change:foo-' + val)
 		});
 
+		// Создаем iframe на текущий домен
 		_createWin('store.test.html').then(function (el) {
+			// Получаем экземпляр store из iframe
 			var winStore = el.contentWindow.wormhole.store;
 
+			// Сверяем значения
 			equal(winStore.get('rand'), rand);
+
+			// Устанавливаем какое-то значения, для проверки событий
 			winStore.set('foo', rand);
 
 			setTimeout(function () {
+				// Проверяем события
 				deepEqual(log, [
 					'change',
 					'change:foo-' + rand
 				]);
 
+				// Чтение
 				equal(store.get('foo'), rand);
 
+				// Удаление
 				store.remove('foo');
 				equal(store.get('foo'), void 0);
 
