@@ -16,6 +16,10 @@ define([], function () {
 	}
 
 
+	/**
+	 * @class emitter
+	 * @desc  Микро-излучатель
+	 */
 	function emitter() {
 	}
 
@@ -87,6 +91,12 @@ define([], function () {
 	};
 
 
+	/**
+	 * Подмешать методы
+	 * @method
+	 * @param   {*}  target
+	 * @returns {*}
+	 */
 	emitter.apply = function (target) {
 		target.on = emitter.fn.on;
 		target.off = emitter.fn.off;

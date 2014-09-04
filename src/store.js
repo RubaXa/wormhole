@@ -50,15 +50,31 @@ define(["emitter"], function (emitter) {
 
 
 	store = emitter.apply({
+		/**
+		 * Установить значение
+		 * @param {String} key
+		 * @param {*}      value
+		 */
 		set: function (key, value) {
 			_storageData[key] = value;
 			_storage && _storage.setItem(_storageKey(key), _stringifyJSON(value));
 		},
 
+
+		/**
+		 * Получить значение
+		 * @param   {String}  key
+		 * @returns {*}
+		 */
 		get: function (key) {
 			return _storageData[key];
 		},
 
+
+		/**
+		 * Удалить значение
+		 * @param  {String} key
+		 */
 		remove: function (key) {
 			delete _storageData[key];
 			_storage && _storage.removeItem(_storageKey(key));
@@ -66,6 +82,11 @@ define(["emitter"], function (emitter) {
 	});
 
 
+	/**
+	 * Обработчик обновления хранилища
+	 * @param evt
+	 * @private
+	 */
 	function _onsync(evt) {
 		var fullKey = evt.key,
 			key = _getCleanedKey(fullKey),

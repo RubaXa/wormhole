@@ -10,6 +10,7 @@ define(["emitter"], function (emitter) {
 
 	/**
 	 * @class  cors
+	 * @desc   Обертка над postMessage
 	 * @param  {Window}  el
 	 */
 	function cors(el) {
@@ -26,7 +27,13 @@ define(["emitter"], function (emitter) {
 	}
 
 
-	cors.fn = cors.prototype = {
+	cors.fn = cors.prototype = /** @lends cors.prototype */ {
+		/**
+		 * Вызывать удаленную команду
+		 * @param {String}   cmd    команда
+		 * @param {*}        [data] данные
+		 * @param {Function} [callback] функция обратного вызова, получает: `error` и `result`
+		 */
 		call: function (cmd, data, callback) {
 			if (typeof data === 'function') {
 				callback = data;
@@ -44,6 +51,11 @@ define(["emitter"], function (emitter) {
 			this.send(evt);
 		},
 
+
+		/**
+		 * Отправить даныне
+		 * @param {*} data
+		 */
 		send: function (data) {
 			this.window.postMessage(_corsExpando + _stringifyJSON(data), '*');
 		}
