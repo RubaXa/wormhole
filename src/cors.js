@@ -28,6 +28,11 @@ define(["emitter"], function (emitter) {
 
 	cors.fn = cors.prototype = {
 		call: function (cmd, data, callback) {
+			if (typeof data === 'function') {
+				callback = data;
+				data = void 0;
+			}
+
 			var evt = {
 				cmd: cmd,
 				data: data
@@ -55,7 +60,9 @@ define(["emitter"], function (emitter) {
 
 		var id,
 			resp = {},
-			data = evt.data;
+			data = evt.data,
+			source = evt.source,
+			func;
 
 		/* istanbul ignore else */
 		if (data.indexOf(_corsExpando) === 0) {
@@ -65,10 +72,8 @@ define(["emitter"], function (emitter) {
 				data = _parseJSON(evt.data.substr(_corsExpando.length));
 				id = data[_corsExpando];
 
-				/* istanbul ignore else */
 				if (id) {
 					// Это call или ответ на него
-					/* istanbul ignore else */
 					if (data.response) {
 						/* istanbul ignore else */
 						if (_corsCallback[id]) {
@@ -82,16 +87,22 @@ define(["emitter"], function (emitter) {
 						resp[_corsExpando] = id;
 
 						try {
-							resp.result = cors[data.cmd](data.data);
+							func = cors[data.cmd];
+
+							if (func) {
+								resp.result = func(data.data, source);
+							} else {
+								throw "method not found";
+							}
 						} catch (err) {
-							resp.error = err.toString();
+							resp.error = 'wormhole.cors.' + data.cmd + ': ' + err.toString();
 						}
 
 						cors(evt.source).send(resp);
 					}
 				}
 				else {
-					cors.emit('data', data);
+					cors.emit('data', [data, source]);
 				}
 
 			}
