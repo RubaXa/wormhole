@@ -122,6 +122,13 @@ module('wormhole');
 		var store = wormhole.store;
 		var rand = Math.random();
 
+		// Подписываемся на изменение данных
+		store.on('change:' + rand, function (data) {
+			equal(data, rand);
+			log.push('rand-val');
+		});
+
+		store.set(rand, rand);
 		store.set('rand', rand);
 
 		// Подписываемся на изменение данных
@@ -148,6 +155,7 @@ module('wormhole');
 			setTimeout(function () {
 				// Проверяем события
 				deepEqual(log, [
+					'rand-val',
 					'change',
 					'change:foo-' + rand
 				]);

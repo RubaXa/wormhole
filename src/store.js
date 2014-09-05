@@ -49,15 +49,28 @@ define(["emitter"], function (emitter) {
 	_storage = _getStorage('session') || /* istanbul ignore next */ _getStorage('local');
 
 
-	store = emitter.apply({
+	/**
+	 * @desc Хранилище
+	 */
+	store = emitter.apply(/** @lends store */{
+		/**
+		 * Статус хранилища
+		 * @type {boolean}
+		 */
+		disabled: !!_storage,
+
+
+
 		/**
 		 * Установить значение
 		 * @param {String} key
 		 * @param {*}      value
 		 */
 		set: function (key, value) {
-			_storageData[key] = value;
-			_storage && _storage.setItem(_storageKey(key), _stringifyJSON(value));
+			var fullKey = _storageKey(key);
+
+			_storage && _storage.setItem(fullKey, _stringifyJSON(value));
+			_onsync({ key: fullKey }); // принудительная синхронизация
 		},
 
 

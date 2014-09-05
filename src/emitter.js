@@ -93,9 +93,9 @@ define([], function () {
 
 	/**
 	 * Подмешать методы
-	 * @method
 	 * @param   {*}  target
 	 * @returns {*}
+	 * @method
 	 */
 	emitter.apply = function (target) {
 		target.on = emitter.fn.on;
