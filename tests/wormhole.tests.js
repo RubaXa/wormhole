@@ -11,9 +11,7 @@ module('wormhole');
 		var dfd = $.Deferred();
 
 		$('<iframe src="' + (url || REMOTE_URL +  '/tests/cors.test.html')  + '"/>')
-			.load(function (evt) {
-				dfd.resolve(evt.target);
-			})
+			.load(function (evt) { dfd.resolve(evt.target); })
 			.appendTo($fixture)
 		;
 
@@ -122,6 +120,8 @@ module('wormhole');
 		var store = wormhole.store;
 		var rand = Math.random();
 
+		ok(store.enabled, 'enabled');
+
 		// Подписываемся на изменение данных
 		store.on('change:' + rand, function (data) {
 			equal(data, rand);
@@ -142,7 +142,7 @@ module('wormhole');
 		});
 
 		// Создаем iframe на текущий домен
-		_createWin('store.test.html').then(function (el) {
+		_createWin('local.test.html').then(function (el) {
 			// Получаем экземпляр store из iframe
 			var winStore = el.contentWindow.wormhole.store;
 
@@ -152,12 +152,21 @@ module('wormhole');
 			// Устанавливаем какое-то значения, для проверки событий
 			winStore.set('foo', rand);
 
+			// Выставляем значение и сразу читаем его
+			store.set('bar', rand);
+			equal(winStore.get('bar'), rand, 'bar.rand');
+
+			winStore.set('bar', rand + '!');
+			equal(store.get('bar'), rand + '!', 'bar.rand!');
+
 			setTimeout(function () {
 				// Проверяем события
 				deepEqual(log, [
 					'rand-val',
 					'change',
-					'change:foo-' + rand
+					'change',
+					'change:foo-' + rand,
+					'change'
 				]);
 
 				// Чтение
@@ -170,5 +179,88 @@ module('wormhole');
 				start();
 			}, 100);
 		});
+	});
+
+
+	// Стресс-тест событий хранилища
+	0 && asyncTest('store:stress', function () {
+		var log = [],
+			key = Math.random(),
+			store = wormhole.store,
+			minDelay = 100,
+			maxIterations = 100,
+			_log = Array.apply(null, new Array(maxIterations)).map(function (_, i) {
+				return i;
+			})
+		;
+
+		store.on('change:' + key, function (val) {
+			log.push(val)
+		});
+
+		_createWin('local.test.html').then(function (el) {
+			var winStore = el.contentWindow.wormhole.store;
+
+			for (var i = 0; i < maxIterations; i++) {
+				setTimeout(function () {
+					winStore.set(key, this);
+				}.bind(i), i*minDelay);
+			}
+
+			setTimeout(function () {
+				equal(log.length, maxIterations);
+				deepEqual(log, _log);
+				start();
+			}, minDelay * maxIterations);
+		});
+	});
+
+
+	// Тестируем Worker
+	asyncTest('worker', function () {
+		var iteration = 0,
+			maxWorkers = 20,
+			maxIterations = 2
+		;
+
+		$.Deferred().resolve()
+			.then(function _next() {
+				var dfd = $.Deferred(),
+					name = 'iteration-' + iteration,
+					peersLog = [],
+					_peersLog = [1], // с чем сравниваем
+					pid
+				;
+
+
+				_createWin('local.test.html?worker=' + [iteration, 0]).then(function (el) {
+					 new el.contentWindow.wormhole.Worker(name).on('peers', function (count) {
+						peersLog.push(count);
+
+						clearTimeout(pid);
+						pid = setTimeout(dfd.resolve, 100);
+					});
+
+					Array.apply(null, new Array(maxWorkers - 1)).forEach(function (_, i) {
+						_peersLog.push(++i + 1);
+
+						_createWin('local.test.html?worker=' + [iteration, i]).then(function (el) {
+							new el.contentWindow.wormhole.Worker(name);
+						});
+					});
+				});
+
+				return dfd.then(function () {
+					deepEqual(peersLog, _peersLog, name);
+
+					if (++iteration < maxIterations) {
+						return _next();
+					}
+				});
+			})
+			.then(function () {
+				start();
+			})
+		;
 	});
 })();
