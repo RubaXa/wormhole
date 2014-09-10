@@ -1,4 +1,4 @@
-define(["emitter"], function (emitter) {
+define(["emitter"], function (Emitter) {
 	var store,
 		_storage,
 		_storageNS = '__wormhole.store__:',
@@ -52,7 +52,7 @@ define(["emitter"], function (emitter) {
 	/**
 	 * @desc Хранилище
 	 */
-	store = emitter.apply(/** @lends store */{
+	store = Emitter.apply(/** @lends store */{
 		/**
 		 * Статус хранилища
 		 * @type {boolean}

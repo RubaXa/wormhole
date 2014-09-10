@@ -1,4 +1,4 @@
-define(["emitter", "store"], function (emitter, store) {
+define(["emitter", "store"], function (Emitter, store) {
 	var WORKER_STORE_PREFIX = '__worker__.',
 
 		_parseJSON = JSON.parse,
@@ -99,13 +99,13 @@ define(["emitter", "store"], function (emitter, store) {
 
 	/**
 	 * @class   Worker
-	 * @extends emitter
+	 * @extends Emitter
 	 * @desc    Обертка над SharedWorker c деградацией до sessionStorage
 	 * @param   {Object} options  найстройки
 	 */
 	function Worker(options) {
 		if (typeof options === 'string') {
-			options = { name: options }
+			options = { name: options };
 		}
 		else {
 			options = options || {};
@@ -127,8 +127,9 @@ define(["emitter", "store"], function (emitter, store) {
 
 
 
-	Worker.fn = Worker.prototype = emitter.apply(/** @lends Worker.prototype */{
+	Worker.fn = Worker.prototype = Emitter.apply(/** @lends Worker.prototype */{
 		_attempt: 0,
+
 
 		/**
 		 * Испустить событие
@@ -186,7 +187,7 @@ define(["emitter", "store"], function (emitter, store) {
 
 			port.addEventListener('message', function (evt) {
 				evt = evt.data;
-				emitter.fn.emit.call(this, evt.type, evt.data);
+				Emitter.fn.emit.call(this, evt.type, evt.data);
 //				console.log([label, url], evt);
 			}.bind(this));
 

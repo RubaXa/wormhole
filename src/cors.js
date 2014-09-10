@@ -1,4 +1,4 @@
-define(["emitter"], function (emitter) {
+define(["emitter"], function (Emitter) {
 	var _corsId = 1,
 		_corsExpando = '__cors__',
 		_corsCallback = {},
@@ -127,7 +127,7 @@ define(["emitter"], function (emitter) {
 
 
 	// Подмешиваем
-	emitter.apply(cors);
+	Emitter.apply(cors);
 
 
 	/* istanbul ignore else */

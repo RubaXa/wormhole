@@ -20,9 +20,9 @@ module('wormhole');
 
 
 	// Излучатель: on/off/emit
-	test('emitter', function () {
+	test('Emitter', function () {
 		var log = [];
-		var emitter = new wormhole.emitter;
+		var emitter = new wormhole.Emitter;
 		var onFoo = function (data) {
 			log.push('foo-' + data);
 		};

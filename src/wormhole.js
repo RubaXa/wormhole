@@ -1,8 +1,11 @@
-define(["cors", "emitter", "store", "worker"], function (cors, emitter, store, Worker) {
+define(["cors", "emitter", "store", "worker"], function (cors, Emitter, store, Worker) {
+
+
+	// Export
 	window.wormhole = {
 		cors: cors,
 		store: store,
-		emitter: emitter,
+		Emitter: Emitter,
 		Worker: Worker
 	};
 });

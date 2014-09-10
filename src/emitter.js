@@ -17,19 +17,19 @@ define([], function () {
 
 
 	/**
-	 * @class emitter
+	 * @class Emitter
 	 * @desc  Микро-излучатель
 	 */
-	function emitter() {
+	function Emitter() {
 	}
 
 
-	emitter.fn = emitter.prototype = /** @lends emitter.prototype */ {
+	Emitter.fn = Emitter.prototype = /** @lends Emitter.prototype */ {
 		/**
 		 * Подписаться на событие
 		 * @param   {String}   name
 		 * @param   {Function} fn
-		 * @returns {emitter}
+		 * @returns {Emitter}
 		 */
 		on: function (name, fn) {
 			getListeners(this, name).push(fn);
@@ -97,15 +97,15 @@ define([], function () {
 	 * @returns {*}
 	 * @method
 	 */
-	emitter.apply = function (target) {
-		target.on = emitter.fn.on;
-		target.off = emitter.fn.off;
-		target.emit = emitter.fn.emit;
+	Emitter.apply = function (target) {
+		target.on = Emitter.fn.on;
+		target.off = Emitter.fn.off;
+		target.emit = Emitter.fn.emit;
 
 		return target;
 	};
 
 
 	// Export
-	return emitter;
+	return Emitter;
 });
