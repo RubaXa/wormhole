@@ -57,8 +57,7 @@ define(["emitter"], function (emitter) {
 		 * Статус хранилища
 		 * @type {boolean}
 		 */
-		disabled: !!_storage,
-
+		enabled: !!_storage,
 
 
 		/**
@@ -80,7 +79,8 @@ define(["emitter"], function (emitter) {
 		 * @returns {*}
 		 */
 		get: function (key) {
-			return _storageData[key];
+			var value = _storage.getItem(_storageKey(key));
+			return typeof value === 'string' ? _parseJSON(value) : value;
 		},
 
 
@@ -104,7 +104,8 @@ define(["emitter"], function (emitter) {
 		var fullKey = evt.key,
 			key = _getCleanedKey(fullKey),
 			newValue,
-			oldValue;
+			oldValue
+		;
 
 		if (key && _isStoreKey(fullKey)) {
 			newValue = _storage.getItem(fullKey);
