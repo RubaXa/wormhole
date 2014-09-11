@@ -104,7 +104,7 @@ define(["emitter"], function (Emitter) {
 							if (func) {
 								resp.result = func(data.data, source);
 							} else {
-								throw "method not found";
+								throw 'method not found';
 							}
 						} catch (err) {
 							resp.error = 'wormhole.cors.' + data.cmd + ': ' + err.toString();
