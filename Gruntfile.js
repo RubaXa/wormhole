@@ -113,7 +113,7 @@ module.exports = function (grunt) {
 			intro += deps[name] + '\n\n';
 		}
 
-		grunt.log.oklns('Write file:', config.dst, Object.keys(deps));
+		grunt.log.oklns('Write:', config.dst, Object.keys(deps));
 		grunt.file.write(config.dst, intro + content + outro);
 	});
 
