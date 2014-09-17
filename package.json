@@ -19,8 +19,12 @@
 	},
 	"keywords": [
 		"wormhole",
+		"eventhub",
 		"eventemitter",
-		"tabs"
+		"tabs",
+		"master/slave",
+		"communication",
+		"sharedworker"
 	],
 	"author": "Konstantin Lebedev <ibnRubaXa@gmail.com>",
 	"license": "MIT"
