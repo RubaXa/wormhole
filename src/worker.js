@@ -64,7 +64,7 @@ define([], function () {
 
 
 				function peersUpdated() {
-//					broadcast({ type: 'peers', data: ports.length });
+					broadcast({ type: 'peers', data: ports.length });
 				}
 
 

@@ -46,7 +46,7 @@ define(["emitter"], function (Emitter) {
 
 
 	//  Пробуем получить sessionStorage, либо localStorage
-	_storage = _getStorage('session') || /* istanbul ignore next */ _getStorage('local');
+	_storage = _getStorage('local');
 
 
 	/**

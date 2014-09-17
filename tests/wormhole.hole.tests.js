@@ -15,7 +15,6 @@
 
 	asyncTest('core', function () {
 		var log = [];
-		var peers = [];
 		var fooLog = [];
 		var main = newHole();
 
@@ -43,7 +42,6 @@
 
 			_createWin('local.test.html?hole=2').then(function (el) {
 				newHole(el)
-					.on('connect', function () { peers.push(this.id); })
 					.on('master', function () { log.push('master:slave'); })
 					.on('foo', function () { fooLog.push(this.id); })
 				;
@@ -52,10 +50,7 @@
 			_createWin('local.test.html?hole=3').then(function (el) {
 				newHole(el)
 					.on('master', function () { log.push('master:slave'); })
-					.on('connect', function () {
-						peers.push(this.id);
-						main.destroy();
-					})
+					.on('connect', function () { main.destroy(); })
 					.on('foo', function () { fooLog.push(this.id); })
 					.emit('foo', [1, '-', 1])
 				;
@@ -64,7 +59,6 @@
 			_createWin('local.test.html?hole=4').then(function (el) {
 				newHole(el)
 					.on('master', function () { log.push('master:slave'); })
-					.on('connect', function () { peers.push(this.id); })
 					.on('foo', function () { fooLog.push(this.id); })
 				;
 			});
@@ -84,10 +78,44 @@
 				'master:slave'
 			]);
 
-			//equal(fooLog.length, peers.length, 'foo');
-
 			start();
 		}, 1500);
+	});
+
+
+	// Проверка peers
+	asyncTest('peers', function () {
+		var max = 5; // кол-во iframe
+		var tabs = [];
+
+		function holes() {
+			for (var i = 0; i < max; i++) {
+				tabs.push(_createWin('local.test.html?hole=' + i).then(function (el) {
+					return newHole(el);
+				}));
+			}
+			return $.when.apply($, tabs);
+		}
+
+		holes().then(function (tab) {
+			var count = 0;
+
+			tab.on('peers', function (cnt) {
+				ok(true, 'count: ' + cnt);
+				count = cnt;
+			});
+
+			setTimeout(function () {
+				equal(count, max, 'total: ' + max);
+
+				holes().then(function () {
+					setTimeout(function () {
+						equal(count, max*2, 'total: ' + max*2);
+						start()
+					}, 1500);
+				});
+			}, 1500);
+		});
 	});
 
 

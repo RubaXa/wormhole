@@ -380,7 +380,7 @@
 
 
 	//  Пробуем получить sessionStorage, либо localStorage
-	_storage = _getStorage('session') || /* istanbul ignore next */ _getStorage('local');
+	_storage = _getStorage('local');
 
 
 	/**
@@ -546,7 +546,7 @@
 
 
 				function peersUpdated() {
-//					broadcast({ type: 'peers', data: ports.length });
+					broadcast({ type: 'peers', data: ports.length });
 				}
 
 
@@ -611,6 +611,7 @@
 	
 
 	var MASTER_DELAY = 1000, // ms
+		PEERS_DELAY = MASTER_DELAY,
 		_emitterEmit = Emitter.fn.emit
 	;
 
@@ -908,7 +909,8 @@
 			evt = evt.data;
 
 			if (evt === 'CONNECTED') {
-//				console.log(this.id, evt);
+//				console.log(this.id, evt, this._store('sharedUrl'));
+
 				this.emit = this._workerEmit;
 				this.connected = true;
 				this._processingQueue();
@@ -1037,10 +1039,35 @@
 		_onStorage: function () {
 			var ts = now(),
 				queue = this._store('queue'),
-				master = this._store('master')
+				master = this._store('master'),
+				peers = this._store('peers') || {},
+				id = this.id,
+				peersCount = 0,
+				changedPeers = false
 			;
 
 //			console.log('_onStorage:', this.id, this._storePrefix, JSON.stringify(master));
+
+			// Посчитаем кол-во peers
+			if (peers[id] === void 0) {
+				peers[id] = ts;
+				changedPeers = true;
+			}
+
+			for (id in peers) {
+				if ((ts - peers[id]) > PEERS_DELAY) {
+					delete peers[id];
+					changedPeers = true;
+				} else {
+					peersCount++;
+				}
+			}
+
+			if (changedPeers) {
+				_emitterEmit.call(this, 'peers', peersCount);
+				this._store('peers', peers);
+			}
+
 
 			/* jshint eqnull:true */
 			if (master == null) {
