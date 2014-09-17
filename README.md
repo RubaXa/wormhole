@@ -60,7 +60,7 @@ hole.emit("data", "any data");
 
 
 	// Define remote command (master)
-	wormhole["get-data"] = function (req, callback) {
+	wormhole()["get-data"] = function (req, callback) {
 		var key = _getCacheKey(req),
 			promise = _cache[key];
 
@@ -85,7 +85,7 @@ hole.emit("data", "any data");
 		var dfd = $.Deferred();
 
 		// Calling command on master (from slave... or the master, is not important)
-		wormhole.call("get-data", { url: url, data: data }, function (err, data) {
+		wormhole().call("get-data", { url: url, data: data }, function (err, data) {
 			if (err) {
 				dfd.reject(err);
 			} else {
@@ -98,7 +98,7 @@ hole.emit("data", "any data");
 
 
 	// I'm master!
-	wormhole.on("master", function () {
+	wormhole().on("master", function () {
 		// some code
 	});
 })(jQuery);
