@@ -23,8 +23,44 @@
 	<div id="qunit"></div>
 	<div id="qunit-fixture"></div>
 
+
+	<script>
+		QUnit.config.reorder = false;
+
+		var REMOTE_URL = 'http://127.0.0.1:4790/tests/';
+		var $fixture = $('#qunit-fixture');
+
+
+		function _createWin(url) {
+			var dfd = $.Deferred();
+
+			if (url) {
+				url = url.replace('remote:', REMOTE_URL);
+			}
+
+			$('<iframe src="' + (url || REMOTE_URL +  'cors.test.html')  + '"/>')
+				.load(function (evt) { dfd.resolve(evt.target); })
+				.appendTo($fixture)
+			;
+
+			return dfd;
+		}
+
+		try { localStorage.clear(); } catch (err) {}
+		try { sessionStorage.clear(); } catch (err) {}
+
+		if (/phatnomjs/i.test(navigator.userAgent)) {
+			document.domain = 'phatnom.js';
+		}
+	</script>
+
 	<script src="../wormhole.js"></script>
+
 	<script src="wormhole.tests.js"></script>
+	<script src="wormhole.emitter.tests.js"></script>
+	<script src="wormhole.cors.tests.js"></script>
+	<script src="wormhole.store.tests.js"></script>
+	<script src="wormhole.hole.tests.js"></script>
 
 </body>
 </html>
