@@ -44,14 +44,19 @@ define([], function () {
 		 * @returns {emitter}
 		 */
 		off: function (name, fn) {
-			var listeners = getListeners(this, name),
-				i = listeners.length;
+			if (name === void 0) {
+				delete this[__emitter__];
+			}
+			else {
+				var listeners = getListeners(this, name),
+					i = listeners.length;
 
-			while (i--) {
-				// Ищем слушателя и удаляем (indexOf - IE > 8)
-				if (listeners[i] === fn) {
-					listeners.splice(i, 1);
-					break;
+				while (i--) {
+					// Ищем слушателя и удаляем (indexOf - IE > 8)
+					if (listeners[i] === fn) {
+						listeners.splice(i, 1);
+						break;
+					}
 				}
 			}
 
