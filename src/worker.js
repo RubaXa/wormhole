@@ -1,9 +1,6 @@
-define(["emitter", "store"], function (Emitter, store) {
-	var WORKER_STORE_PREFIX = '__worker__.',
+define([], function () {
+	var _stringifyJSON = JSON.stringify;
 
-		_parseJSON = JSON.parse,
-		_stringifyJSON = JSON.stringify
-	;
 
 	/**
 	 * @type {URL}
@@ -14,194 +11,119 @@ define(["emitter", "store"], function (Emitter, store) {
 	/**
 	 * @type {Blob}
 	 */
-	var Blob = URL && window.Blob;
+	var Blob = window.Blob;
 
 
 	/**
 	 * @type {SharedWorker}
 	 */
-	var SharedWorker = Blob && window.SharedWorker;
+	var SharedWorker = window.SharedWorker;
 
 
-	/**
-	 * @type {string}
-	 * @const
-	 */
-	var PING_SIGNAL = 'PING';
-
-
-	/**
-	 * Создать воркер
-	 * @param   {String} name
-	 * @returns {String}
-	 * @private
-	 */
-	function _createSharedWorkerURL(name) {
-		// Код воркера
-		var source = '(' + (function (window) {
-			var ports = [];
-
-
-			function broadcast(data) {
-				ports.forEach(function (port) {
-					port.postMessage(data);
-				});
-			}
-
-
-			function peersUpdated() {
-				broadcast({ type: 'peers', data: ports.length });
-			}
-
-
-			window.addEventListener('connect', function (event) {
-				var port = event.ports[0];
-
-				ports.push(port);
-
-				port.onmessage = function (evt) {
-					var data = evt.data;
-
-					if (data === PING_SIGNAL) {
-						var idx = ports.indexOf(evt.target);
-
-						if (idx !== -1) {
-							ports.splice(idx, 1);
-							peersUpdated();
-						}
-					} else {
-						broadcast({ type: 'message', data: data });
-					}
-				};
-
-				port.start();
-				peersUpdated();
-			}, false);
-		}).toString() + ')(this, ' + _stringifyJSON(name) + ')';
-
-		return URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
-	}
-
-
-	/**
-	 * Получить/установить путь к воркеру по его имени
-	 * @param   {String} name
-	 * @param   {String} [url]
-	 * @returns {String|undefined}
-	 * @private
-	 */
-	function _workerURL(name, url) {
-		url = store[url ? 'set' : 'get'](WORKER_STORE_PREFIX + name, url);
-		return url;
-	}
-
-
-
-	/**
-	 * @class   Worker
-	 * @extends Emitter
-	 * @desc    Обертка над SharedWorker c деградацией до sessionStorage
-	 * @param   {Object} options  найстройки
-	 */
-	function Worker(options) {
-		if (typeof options === 'string') {
-			options = { name: options };
-		}
-		else {
-			options = options || {};
-		}
+	/* istanbul ignore next */
+	var Worker = {
+		support: URL && Blob && SharedWorker,
 
 
 		/**
-		 * Название группы
-		 * @type {String}
+		 * Создать работника
+		 * @param   {String}  url
+		 * @returns {SharedWorker}
 		 */
-		this.name = options.name || '__globals__';
-
-		try {
-			this._initSharedWorkerTransport();
-		} catch (err) {
-			this._initStorageTransport();
-		}
-	}
-
-
-
-	Worker.fn = Worker.prototype = Emitter.apply(/** @lends Worker.prototype */{
-		_attempt: 0,
-
-
-		/**
-		 * Испустить событие
-		 * @param {String} type
-		 * @param {*}      [args]
-		 */
-		emit: function (type, args) {
-			this.port.postMessage({
-				type: type,
-				data: args
-			});
+		create: function (url) {
+			return new SharedWorker(url);
 		},
 
 
-		_initSharedWorkerTransport: function (retry) {
-			var port,
-				worker,
-				name = this.name,
-				url = _workerURL(name),
-				label = location.pathname + location.search
-			;
+		/**
+		 * Получить ссылку на работника
+		 * @param   {String} name
+		 * @returns {String}
+		 * @private
+		 */
+		getSharedURL: function (name) {
+			// Код воркера
+			var source = '(' + (function (window) {
+				var ports = [];
+				var master = null;
 
-			this._attempt++;
 
-//			console.log('try(' + this._attempt + '):', label, retry, [url, this._prevUrl]);
-
-			if (retry && (this._prevUrl !== url)) {
-				retry = false;
-			}
-			this._prevUrl = url;
-
-			try {
-				url = (retry || !url) ? _createSharedWorkerURL(name) : url;
-				worker = new SharedWorker(url);
-				this.port = (port = worker.port);
-
-				_workerURL(name, url);
-//				console.log('new(' + this._attempt + '):', label, [url]);
-			}
-			catch (err) {
-				if (this._attempt > 3) {
-					throw err;
-				} else {
-					this._initSharedWorkerTransport(true);
+				function checkMaster() {
+					if (!master && ports[0]) {
+						master = ports[0];
+						master.postMessage('MASTER');
+					}
 				}
-				return;
-			}
 
 
-			worker.addEventListener('error', function (err) {
-//				console.log('error(' + this._attempt + '):', label, [url]);
-				this._initSharedWorkerTransport(true);
-			}.bind(this), false);
+				function broadcast(data) {
+					ports.forEach(function (port) {
+						port.postMessage(data);
+					});
+				}
 
 
-			port.addEventListener('message', function (evt) {
-				evt = evt.data;
-				Emitter.fn.emit.call(this, evt.type, evt.data);
-//				console.log([label, url], evt);
-			}.bind(this));
+				function peersUpdated() {
+//					broadcast({ type: 'peers', data: ports.length });
+				}
 
 
-			port.start();
+				// Опришиваем и ищем зомби
+				setInterval(function () {
+					var i = ports.length, port;
 
-			// Пингуем
-			setInterval(function () {
-				this.port.postMessage(PING_SIGNAL);
-			}.bind(this), 30000);
+					while (i--) {
+						port = ports[i];
+
+						if (port.zombie) {
+							// Убиваем зомби
+							if (port === master) {
+								master = null;
+							}
+
+							ports.splice(i, 1);
+							peersUpdated();
+						}
+						else {
+							port.zombie = true; // Помечаем как зомби
+							port.postMessage('PING');
+						}
+					}
+
+					checkMaster();
+				}, 300);
+
+
+				window.addEventListener('connect', function (evt) {
+					var port = evt.ports[0];
+
+					port.onmessage = function (evt) {
+						var data = evt.data;
+
+						if (data === 'PONG') {
+							port.zombie = false; // живой порт
+						}
+						else if (data === 'DESTROY') {
+							port.zombie = true;
+						}
+						else {
+							broadcast({ type: data.type, data: data.data });
+						}
+					};
+
+					ports.push(port);
+
+					port.start();
+					port.postMessage('CONNECTED');
+
+					checkMaster();
+					peersUpdated();
+				}, false);
+			}).toString() + ')(this, ' + _stringifyJSON(name) + ')';
+
+			return URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
 		}
-
-	});
-
+	};
 
 
 	// Export
