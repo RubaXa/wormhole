@@ -16,7 +16,7 @@ module.exports = function (grunt) {
 
 
 		jshint: {
-			all: ['src/*.js'],
+			all: ['src/*.js', 'tests/*.js'],
 
 			options: {
 				newcap: false,	// "Tolerate uncapitalized constructors"
@@ -63,7 +63,7 @@ module.exports = function (grunt) {
 
 
 		requirejs: {
-			src: 'src/wormhole.js',
+			src: 'src/module.js',
 			dst: 'wormhole.js'
 		},
 
@@ -85,35 +85,36 @@ module.exports = function (grunt) {
 			return config.src.split('/').slice(0, -1).concat(name).join('/') + '.js';
 		}
 
-		function parse(src) {
+		function parse(src, exports) {
 			var content = grunt.file.read(src);
 
-			content = content
-				.trim()
-				.replace(/define\((\[.*?\]).*?\n/, function (_, str) {
-					JSON.parse(str).forEach(function (name) {
-						deps[name] = parse(file(name));
-					});
+			content = content.trim().replace(/define\((\[.*?\]).*?\n/, function (_, str) {
+				JSON.parse(str).forEach(function (name) {
+					deps[name] = parse(file(name));
+				});
 
-					return '';
-				})
-				.replace(/\}\);$/, '')
-				.replace(/\/\/\s+Export[\s\S]+/, '')
-			;
+				return '';
+			});
 
-			return content;
+			if (!exports) {
+				content = content.replace(/\/\/\s+Export[\s\S]+/, '');
+			}
+
+			return content.replace(/\}\);$/, '');
 		}
 
 		var config = grunt.config(this.name);
-		var content = parse(config.src);
-		var intro = '(function (window, document) {\n';
+		var content = parse(config.src, true);
+		var intro = '(function (window, document) {\n"use strict";\n';
 		var outro = '})(window, document);';
 
 		for (var name in deps) {
 			intro += deps[name] + '\n\n';
 		}
 
-		grunt.log.oklns('Write:', config.dst, Object.keys(deps));
+		grunt.log.oklns('Build:', config.dst);
+		grunt.log.oklns('Deps:', Object.keys(deps).join(', '));
+
 		grunt.file.write(config.dst, intro + content + outro);
 	});
 
