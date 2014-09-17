@@ -5,15 +5,51 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 
-	<title>Wormhole</title>
+	<title>wormhole.js — is EventEmitter for communication between tabs.</title>
 
 	<meta property="og:image" content=""/>
 
 	<meta name="keywords" content=""/>
 	<meta name="description" content=""/>
+
+	<link href='http://fonts.googleapis.com/css?family=Syncopate:700' rel='stylesheet' type='text/css'>
+	<link href="st/app.css" rel="stylesheet" type="text/css"/>
 </head>
 <body>
-	<script src="Hub.js"></script>
+
+	<h1>wormhole</h1>
+
+	<div class="container text-center">
+		<script type="text/xtpl" ctrl="main">
+			.holes | {{ctx.holes}}
+
+			br {}
+			br {}
+			br {}
+
+			a.open-tab[href="./"][target="_blank"] | Open new tab
+
+			.colors {
+				.choose | Choose color
+				.latex {
+					for color in ctx.colors {
+						.color {
+							x-tap: ctx.chooseColor(color);
+							class: { active: color == ctx.bgcolor }
+							style: { background-color: color }
+						}
+					}
+				}
+			}
+		</script>
+	</div>
+
+
+
+	<script src="wormhole.js"></script>
+	<script src="//xtpl.ru/js/xtpl.min.js"></script>
+
+	<script src="st/app.js"></script>
 
 
 	<script>
