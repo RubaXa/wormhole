@@ -32,7 +32,8 @@ define([], function () {
 		 * @returns {Emitter}
 		 */
 		on: function (name, fn) {
-			getListeners(this, name).push(fn);
+			var list = getListeners(this, name);
+			list.push(fn);
 			return this;
 		},
 
@@ -75,7 +76,7 @@ define([], function () {
 				nargs
 			;
 
-			args = args === void 0 ? [] : [].concat(args);
+			args = (arguments.length === 0) ? [] : [].concat(args);
 			nargs = args.length;
 
 			while (i--) {
@@ -109,6 +110,9 @@ define([], function () {
 
 		return target;
 	};
+
+
+	Emitter.getListeners = getListeners;
 
 
 	// Export
