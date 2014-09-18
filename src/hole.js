@@ -1,6 +1,8 @@
 define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now, uuid, debounce, Emitter, store, Worker) {
 	var MASTER_DELAY = 1000, // ms
 		PEERS_DELAY = MASTER_DELAY,
+		QUEUE_WAIT = MASTER_DELAY * 2, // ms время сколько держать очередь
+
 		_emitterEmit = Emitter.fn.emit
 	;
 
@@ -81,7 +83,7 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 		 * @type {Number}
 		 * @private
 		 */
-		_this._idx = _this._store('idx') || 0;
+		_this._idx = 0;
 
 
 		/**
@@ -331,25 +333,105 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 		_initStorageTransport: function () {
 			var _this = this;
 
-			_this.__onStorage = function () {
-				_this._onStorage();
+			// Реакция на обновление storage
+			_this.__onStorage = function (key, data) {
+				if (key === _this._storeKey('queue')) {
+					_this._processingQueue(data[key].items);
+				}
+				else if (key === _this._storeKey('meta')) {
+					_this._checkMeta();
+				}
 			};
+
+			// Обновить мета данные
+			_this.__updMeta = function () {
+				_this._checkMeta(true);
+			};
+
+			store.on('change', _this.__onStorage);
 
 			// Разрыв для нормальной работы синхронной подписки на события
 			_this._pid = setTimeout(function _tick() {
 				_this.emit = _this._storeEmit;
 				_this.connected = true;
 
-				store.on('change', _this.__onStorage);
 				_emitterEmit.call(_this, 'connect', _this);
 
-				_this._processingQueue(); // первый раз синхронно
-				_this._processingQueue = debounce(_this._processingQueue, 30);
+				_this._checkMeta();
+				_this._processingQueue();
 
-				_this._onStorage();
-
-				_this._pid = setInterval(_this.__onStorage, MASTER_DELAY/2);
+				_this._pid = setInterval(_this.__updMeta, MASTER_DELAY/2);
 			}, 0);
+		},
+
+
+
+		/**
+		 * Проверка мета данных
+		 * @param  {Boolean}  [upd]
+		 * @private
+		 */
+		_checkMeta: function (upd) {
+			var ts = now(),
+				meta = this._store('meta') || { id: 0, ts: 0, peers: {} },
+				peers = meta.peers,
+				id = this.id,
+				peersCount = 0
+			;
+
+
+			// Посчитаем кол-во peers
+			peers[id] = ts;
+
+			for (id in peers) {
+				if ((ts - peers[id]) > PEERS_DELAY) {
+					delete peers[id];
+				} else {
+					peersCount++;
+				}
+			}
+
+
+			// Обновляем кол-во пиров
+			if (this.length !== peersCount) {
+				this.length = peersCount;
+				_emitterEmit.call(this, 'peers', peersCount);
+			}
+
+
+
+			// Проверяем master, жив он или нет
+			/* istanbul ignore else */
+			if ((ts - meta.ts) > MASTER_DELAY || this.master) {
+				if (meta.id != this.id) {
+//					console.log('set.master:', this.id, ts - master.ts, ts);
+
+					upd = true;
+					meta.id = this.id;
+					this.master = true;
+
+					_emitterEmit.call(this, 'master', this);
+				}
+
+//				console.log('check.master:', this.id, ts - master.ts, ts);
+				meta.ts = ts;
+			}
+
+
+			if (upd) {
+				this._store('meta', meta);
+			}
+		},
+
+
+		/**
+		 * Получить ключь для store
+		 * @param   {String}  key
+		 * @returns {String}
+		 * @private
+		 */
+		_storeKey: function (key) {
+			return this._storePrefix + '.' + key;
 		},
 
 
@@ -361,7 +443,7 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 		 * @private
 		 */
 		_store: function (key, value) {
-			key = this._storePrefix + '.' + key;
+			key = this._storeKey(key);
 
 			if (value === void 0) {
 				value = store.get(key);
@@ -400,92 +482,31 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 		 * @private
 		 */
 		_storeEmit: function (type, args) {
-			var idx = this._store('idx') || 0,
-				queue = this._store('queue') || [],
-				ts = now();
+			var queue = this._store('queue') || { items: [], idx: 0 },
+				ts = now(),
+				items = queue.items,
+				i = items.length
+			;
 
-			queue.push({
+			items.push({
 				ts: ts,
-				idx: ++idx,
+				idx: ++queue.idx,
 				type: type,
 				args: args,
 				source: this.id
 			});
 
-			this._store('idx', idx);
-			this._store('queue', queue);
+			while (i--) {
+				if (ts - items[i].ts > QUEUE_WAIT) {
+					items.splice(0, i);
+					break;
+				}
+			}
 
-			_emitterEmit.call(this, type, args);
+			this._store('queue', queue);
+			this._processingQueue(queue.items);
 
 			return this;
-		},
-
-
-		/**
-		 * Проверка изменений в хранилище
-		 * @private
-		 */
-		_onStorage: function () {
-			var ts = now(),
-				queue = this._store('queue'),
-				master = this._store('master'),
-				peers = this._store('peers') || {},
-				id = this.id,
-				peersCount = 0,
-				changedPeers = false
-			;
-
-//			console.log('_onStorage:', this.id, this._storePrefix, JSON.stringify(master));
-
-			// Посчитаем кол-во peers
-			if (peers[id] === void 0) {
-				peers[id] = ts;
-				changedPeers = true;
-			}
-
-			for (id in peers) {
-				if ((ts - peers[id]) > PEERS_DELAY) {
-					delete peers[id];
-					changedPeers = true;
-				} else {
-					peersCount++;
-				}
-			}
-
-			if (changedPeers) {
-				_emitterEmit.call(this, 'peers', peersCount);
-				this._store('peers', peers);
-			}
-
-
-			/* jshint eqnull:true */
-			if (master == null) {
-				master = { ts: 0, id: 0 };
-			}
-
-
-			// Проверяем master, жив он или нет
-			/* istanbul ignore else */
-			if ((ts - master.ts) > MASTER_DELAY || this.master) {
-				if (master.id != this.id) {
-//					console.log('set.master:', this.id, ts - master.ts, ts);
-
-					master.id = this.id;
-					this.master = true;
-
-					_emitterEmit.call(this, 'master', this);
-				}
-
-//				console.log('check.master:', this.id, ts - master.ts, ts);
-				master.ts = ts;
-				this._store('master', master);
-			}
-
-			/* istanbul ignore else */
-			if (queue) {
-//				console.log(this.id, this._idx, queue);
-				this._processingQueue(queue);
-			}
 		},
 
 
@@ -512,9 +533,9 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 					if (this._idx < evt.idx) {
 						this._idx = evt.idx;
 
-						if (evt.source !== this.id) {
+//						if (evt.source !== this.id) {
 							_emitterEmit.call(this, evt.type, evt.args);
-						}
+//						}
 					}
 				}
 			}
@@ -541,6 +562,8 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 		 * Уничтожить
 		 */
 		destroy: function () {
+			var meta = this._store('meta') || {};
+
 			clearTimeout(this._pid);
 			clearInterval(this._pid);
 
@@ -550,7 +573,6 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 			// Описываем все события
 			this.off();
 			store.off('change', this.__onStorage);
-
 
 			/* istanbul ignore next */
 			if (this.port) {
@@ -563,9 +585,15 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 			/* istanbul ignore else */
 			if (this.master) {
 				// Если я мастер, удаляем инфу об этом
+				meta.id = null;
 				this.master = false;
-				this._store('master', null);
 			}
+
+			if (meta.peers) {
+				delete meta.peers[this.id];
+			}
+
+			this._store('meta', meta);
 		}
 	};
 
