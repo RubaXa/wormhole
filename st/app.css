@@ -7,6 +7,7 @@ html, body {
 }
 
 body {
+	font-family: 'Roboto', sans-serif;
 	text-align: center;
 	background-color: #525560;
 }
@@ -68,7 +69,6 @@ body {
 	z-index: 100;
 	position: absolute;
 	font-size: 80px;
-	font-family: 'Roboto', sans-serif;
 	font-weight: 500;
 	background: url('holes.png') no-repeat;
 }
@@ -104,4 +104,20 @@ body {
 
 		.variant.active {
 			opacity: .3;
+		}
+
+
+.marcus {
+	color: #ccc;
+	opacity: .4;
+	right: 10px;
+	bottom: 10px;
+	position: absolute;
+	z-index: 1000;
+}
+	.marcus a {
+		color: #ccc;
+	}
+		.marcus a:hover {
+			color: #fff;
 		}
