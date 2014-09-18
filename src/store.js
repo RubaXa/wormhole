@@ -1,7 +1,7 @@
 define(["emitter"], function (Emitter) {
 	var store,
 		_storage,
-		_storageNS = '__wormhole.store__:',
+		_storageNS = '__wormhole.store__.',
 		_storageData = {},
 
 		_parseJSON = JSON.parse,
@@ -15,7 +15,7 @@ define(["emitter"], function (Emitter) {
 
 
 	function _isStoreKey(key) {
-		return key.indexOf(_storageNS) === 0;
+		return (key !== _storageNS) && key.indexOf(_storageNS) === 0;
 	}
 
 
@@ -103,21 +103,15 @@ define(["emitter"], function (Emitter) {
 	function _onsync(evt) {
 		var fullKey = evt.key,
 			key = _getCleanedKey(fullKey),
-			newValue,
-			oldValue
+			newValue
 		;
 
 		if (key && _isStoreKey(fullKey)) {
-			newValue = _storage.getItem(fullKey);
-			oldValue = _stringifyJSON(_storageData[key]);
+			newValue = _parseJSON(_storage.getItem(fullKey));
+			_storageData[key] = newValue;
 
-			/* istanbul ignore else */
-			if (newValue !== oldValue) {
-				_storageData[key] = (newValue = _parseJSON(newValue));
-
-				store.emit('change', _storageData);
-				store.emit('change:' + key, newValue);
-			}
+			store.emit('change', [key, _storageData]);
+			store.emit('change:' + key, [key, newValue]);
 		}
 	}
 
@@ -138,7 +132,7 @@ define(["emitter"], function (Emitter) {
 
 		/* istanbul ignore else */
 		if (window.addEventListener) {
-			window.addEventListener('storage', _onsync, false);
+			window.addEventListener('storage', _onsync);
 		} else {
 			window.attachEvent('onstorage', _onsync);
 		}
