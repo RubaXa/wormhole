@@ -255,7 +255,7 @@
 			_finish = wormhole.debounce(function () {
 				deepEqual(actual, expected);
 				start();
-			}, 2000),
+			}, 600),
 
 			_set = function (key, value) {
 				ok(!(key in actual), key + ((key in actual) ? ' - already added' : ''));
@@ -272,13 +272,15 @@
 		}
 
 		$.Deferred().resolve(new wormhole.Hole(url, useStore)).then(function (foo) {
+			expected['foo:' + foo.id] = 1;
 			expected['foo.foo'] = 1;
-			expected['foo.master'] = true;
+			expected['foo.master'] = 1;
 			expected['foo.sync'] = 'ok';
 			expected['foo.async'] = 'aok';
 
 			foo.on('master', function () {
-				_set('foo.master', true);
+				_set('foo:' + this.id, 1);
+				_set('foo.master', 1);
 			});
 
 			// Определяем команду (синхронную)
@@ -310,7 +312,7 @@
 				expected['bar.unkown.result'] = 'wormhole.unkown: method not found';
 
 				bar.on('master', function () {
-					_set('bar.master', true);
+					_set('bar:' + bar.id, 1);
 				});
 
 				// Вызываем команду
@@ -335,19 +337,20 @@
 
 				// Next Level
 				setTimeout(function () {
-					expected['bar.master'] = true;
+					expected['bar:' + bar.id] = 1;
 
 					// Уничтожаем foo, bar должен стать мастером
 					foo.destroy();
 
+
 					// Hard level
 					setTimeout(function () {
 						newTabHole().then(function (baz) {
-							expected['baz.master'] = true;
+							expected['baz:' + baz.id] = true;
 							expected['baz.async.result'] = ['y', 'x'];
 
 							baz.on('master', function () {
-								_set('baz.master', true);
+								_set('baz:' + baz.id, true);
 							});
 
 							baz.async = function (data, next) {
@@ -392,10 +395,10 @@
 								qux.qux = function () {};
 
 								baz.call('qux');
-							}, 1000);
+							}, 500);
 						});
-					}, 1000);
-				}, 1000);
+					}, 500);
+				}, 500);
 			});
 		});
 	});

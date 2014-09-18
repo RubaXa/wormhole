@@ -119,3 +119,60 @@ $.getData("/path/to/api").then(function (result) {
 });
 ```
 
+
+---
+
+
+### Сomponents
+
+
+#### wormhole.Emitter
+Micro event emitter.
+
+ * on(type:`String`, fn:`Function`):`this`
+ * off(type:`String`, fn:`Function`):`this`
+ * emit(type:`String`[, args:`*|Array`]):`this`
+
+```js
+var obj = womrhole.Emitter.apply({}); // or new womrhole.Emitter();
+
+obj.on("foo", function () {
+  console.log(arguments);
+});
+
+
+obj.emit("foo"); // []
+obj.emit("foo", 1); // [1]
+obj.emit("foo", [1, 2, 3]); // [1, 2, 3]
+```
+
+
+---
+
+#### wormhole.store
+Interface for `localStorage`.
+
+ * get(key:`String`):`*`
+ * set(key:`String`, value:`*`)
+ * remove(key:`String`):`*`
+ * on(type:`String`, fn:`Function`)
+ * off(type:`String`, fn:`Function`)
+
+```js
+wormhole.store.on("change", function (key, data) {
+	console.log(key, data);
+});
+
+wormhole.store.on("change:prop", function (key, value) {
+	console.log(key, value);
+});
+```
+
+---
+
+### Utils
+
+##### wormhole.uuid():`String`
+A universally unique identifier (UUID) is an identifier standard used in software construction,
+standardized by the Open Software Foundation (OSF) as part of the Distributed Computing Environment (DCE)
+(c) [wiki](https://en.wikipedia.org/wiki/Universally_unique_identifier).

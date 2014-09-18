@@ -3,77 +3,104 @@ html, body {
 	padding: 0;
 	position: relative;
 	min-height: 100%;
-	font-size: 20px;
-}
-
-html {
-	background-color: cadetblue;
+	height: 100%;
 }
 
 body {
-	color: #fff;
-	text-shadow: 0 0 3px rgba(0,0,0,.5);
-	font-family: Arial, Helvetica, sans-serif;
-}
-
-
-h1, .holes {
-	margin: 0;
-	padding: 80px 0;
-	font-size: 80px;
-	font-family: 'Syncopate', sans-serif;
-	font-weight: 700;
 	text-align: center;
+	background-color: #525560;
 }
 
-.holes {
-	padding: 0;
-	font-size: 150px;
-	font-family: monospace, serif;
-}
-
-.text-center {
-	text-align: center;
+.ferule {
+	height: 100%;
+	display: inline-block;
+	vertical-align: middle;
 }
 
 .container {
-	margin: 0 auto;
-	width: 80%;
-	max-width: 1200px;
-}
-
-
-
-.open-tab {
-	color: #fff;
-	cursor: pointer;
-	font-size: 30px;
-	font-family: 'Syncopate', sans-serif;
-	text-decoration: underline;
-}
-
-
-.example {
-	margin: 30px 0;
-	padding: 30px;
-}
-
-
-.colors {
-	width: 500px;
-	margin: 0 auto;
-}
-
-.color {
-	border: 2px solid #fff;
-	cursor: pointer;
-	width: 50px;
-	height: 50px;
-	margin: 10px;
+	width: 90%;
 	display: inline-block;
-	border-radius: 3px;
-	box-shadow: 0 0 5px rgba(0,0,0,.5);
+	max-width: 1300px;
+	vertical-align: middle;
+	position: relative;
 }
-	.color.active {
-		opacity: .5;
+
+
+.logo {
+	top: 10%;
+	left: 25%;
+	right: 25%;
+	position: absolute;
+	display: inline-block;
+	z-index: 100;
+}
+
+.overlay {
+	top: -10px;
+	right: -10px;
+	left: -10px;
+	bottom: -10px;
+	position: absolute;
+	background-color: rgba(0,0,0,.3);
+	z-index: 50;
+}
+
+
+.image {
+	top: 0;
+	left: 0;
+	width: 100%;
+	z-index: 10;
+}
+
+.holes {
+	text-decoration: none;
+	cursor: pointer;
+	width: 157px;
+	height: 191px;
+	top: 50%;
+	left: 50%;
+	color: #fff;
+	padding-right: 15px;
+	margin: -77px 0 0 -85px;
+	padding-top: 30px;
+	z-index: 100;
+	position: absolute;
+	font-size: 80px;
+	font-family: 'Roboto', sans-serif;
+	font-weight: 500;
+	background: url('holes.png') no-repeat;
+}
+	.holes:hover {
+		background-position: -175px 0;
 	}
+
+.variants {
+	width: 100%;
+	bottom: 30px;
+	position: absolute;
+	z-index: 110;
+}
+	.variant {
+		cursor: pointer;
+		width: 70px;
+		height: 70px;
+		background: url('variant.png') no-repeat;
+		display: inline-block;
+		margin-left: 20px;
+		background-color: #fff;
+		border: 3px solid #fff;
+		border-radius: 100%;
+	}
+		.variant:first-child {
+			margin-left: 0;
+		}
+
+		.variant:hover {
+			border-color: #ff0;
+			background-color: #ff0;
+		}
+
+		.variant.active {
+			opacity: .3;
+		}

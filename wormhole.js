@@ -608,7 +608,7 @@
 
 	
 
-	var MASTER_DELAY = 1000, // ms
+	var MASTER_DELAY = 500, // ms
 		PEERS_DELAY = MASTER_DELAY,
 		QUEUE_WAIT = MASTER_DELAY * 2, // ms время сколько держать очередь
 
@@ -692,7 +692,7 @@
 		 * @type {Number}
 		 * @private
 		 */
-		_this._idx = 0;
+		_this._idx = (_this._store('queue') || {}).idx || 0;
 
 
 		/**
@@ -1013,7 +1013,7 @@
 			/* istanbul ignore else */
 			if ((ts - meta.ts) > MASTER_DELAY || this.master) {
 				if (meta.id != this.id) {
-//					console.log('set.master:', this.id, ts - master.ts, ts);
+//					console.log('set.master:', this.id, ts - meta.ts, ts);
 
 					upd = true;
 					meta.id = this.id;
@@ -1022,8 +1022,8 @@
 					_emitterEmit.call(this, 'master', this);
 				}
 
-//				console.log('check.master:', this.id, ts - master.ts, ts);
 				meta.ts = ts;
+//				console.log('check.master:', this.id, ts - meta.ts, ts);
 			}
 
 
@@ -1194,7 +1194,7 @@
 			/* istanbul ignore else */
 			if (this.master) {
 				// Если я мастер, удаляем инфу об этом
-				meta.id = null;
+				meta.ts = 0;
 				this.master = false;
 			}
 
