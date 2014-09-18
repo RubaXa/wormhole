@@ -19,6 +19,7 @@ body {
 
 .container {
 	width: 90%;
+	min-height: 70%;
 	display: inline-block;
 	max-width: 1300px;
 	vertical-align: middle;
