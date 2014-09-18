@@ -1,11 +1,11 @@
-(function () {
+(function (Emitter) {
 	module('wormhole.Emitter');
 
 
 	// Излучатель: on/off/emit
-	test('Emitter', function () {
+	test('core', function () {
 		var log = [];
-		var emitter = new wormhole.Emitter;
+		var emitter = new Emitter;
 
 		var onFoo = function (data) {
 			log.push('foo-' + data);
@@ -41,4 +41,30 @@
 
 		equal(log + '', 'foo-1,bar-1,foo-2,bar-2,bar-3,baz-,baz-1.2,baz-1.2.3,baz-1.2.3.4.5');
 	});
-})();
+
+
+	test('__emitter__', function () {
+		var emitter = new Emitter;
+		var foo = function () {/*foo*/};
+		var bar = function () {/*bar*/};
+
+		emitter.on('change', foo);
+		emitter.on('change', foo);
+		emitter.on('change', bar);
+		emitter.on('change', bar);
+
+		equal(Emitter.getListeners(emitter, 'change').length, 4);
+
+		emitter.off('change', bar);
+		equal(Emitter.getListeners(emitter, 'change').length, 3);
+
+		emitter.off('change', bar);
+		equal(Emitter.getListeners(emitter, 'change').length, 2);
+
+		emitter.off('change', foo);
+		equal(Emitter.getListeners(emitter, 'change').length, 1);
+
+		emitter.off('change', foo);
+		equal(Emitter.getListeners(emitter, 'change').length, 0);
+	});
+})(wormhole.Emitter);

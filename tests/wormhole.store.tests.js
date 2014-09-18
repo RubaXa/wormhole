@@ -25,7 +25,7 @@
 		});
 
 		// Подписываем на конкретный ключ
-		store.on('change:foo', function (val) {
+		store.on('change:foo', function (key, val) {
 			log.push('change:foo-' + val);
 		});
 

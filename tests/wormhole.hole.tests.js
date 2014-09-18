@@ -85,15 +85,19 @@
 
 	// Проверка peers
 	asyncTest('peers', function () {
-		var max = 5; // кол-во iframe
+		var max = 10; // кол-во iframe
 		var tabs = [];
 
 		function holes() {
 			for (var i = 0; i < max; i++) {
+				/* jshint loopfunc:true */
 				tabs.push(_createWin('local.test.html?hole=' + i).then(function (el) {
-					return newHole(el);
+					var hole = newHole(el);
+					hole.el = el;
+					return hole;
 				}));
 			}
+
 			return $.when.apply($, tabs);
 		}
 
@@ -111,10 +115,45 @@
 				holes().then(function () {
 					setTimeout(function () {
 						equal(count, max*2, 'total: ' + max*2);
-						start()
-					}, 1500);
+
+						holes().then(function () {
+							var tabs = [].slice.call(arguments);
+							var removeCnt = 7;
+
+							setTimeout(function () {
+								equal(count, max*3, 'total: ' + max*3);
+
+								tabs[10].on('peers', function (cnt) {
+									ok(true, '10.count: ' + cnt);
+									count = cnt;
+								});
+
+								tabs.splice(0, removeCnt).forEach(function (hole) {
+									$(hole.el).remove();
+								});
+
+								setTimeout(function () {
+									equal(count, max*3 - removeCnt, 'total: ' + max*3 - removeCnt);
+
+									tabs.pop().on('peers', function (cnt) {
+										ok(true, 'pop.count: ' + cnt);
+										count = cnt;
+									});
+
+									tabs.forEach(function (hole) {
+										$(hole.el).remove();
+									});
+
+									setTimeout(function () {
+										equal(count, 1, 'end');
+										start();
+									}, 1000);
+								}, 1000);
+							}, 1000);
+						});
+					}, 1000);
 				});
-			}, 1500);
+			}, 1000);
 		});
 	});
 
@@ -195,7 +234,7 @@
 				for (var i = 0; i < max; i++) {
 
 					deepEqual(syncLogs[i], syncLogs[0], 'hole.sync #' + i);
-					deepEqual(asyncLogs[i].sort(), asyncLogs[0], 'hole.async #' + i);
+					deepEqual(asyncLogs[i], asyncLogs[0], 'hole.async #' + i);
 				}
 
 				start();
@@ -216,7 +255,7 @@
 			_finish = wormhole.debounce(function () {
 				deepEqual(actual, expected);
 				start();
-			}, 1500),
+			}, 2000),
 
 			_set = function (key, value) {
 				ok(!(key in actual), key + ((key in actual) ? ' - already added' : ''));
@@ -353,10 +392,10 @@
 								qux.qux = function () {};
 
 								baz.call('qux');
-							}, 100);
+							}, 1000);
 						});
-					}, 100);
-				}, 200);
+					}, 1000);
+				}, 1000);
 			});
 		});
 	});

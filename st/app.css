@@ -53,10 +53,15 @@ h1, .holes {
 }
 
 
+.example {
+	margin: 30px 0;
+	padding: 30px;
+}
+
+
 .colors {
 	width: 500px;
 	margin: 0 auto;
-	margin-top: 50px;
 }
 
 .color {

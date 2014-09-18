@@ -23,24 +23,31 @@
 		<script type="text/xtpl" ctrl="main">
 			.holes | {{ctx.holes}}
 
-			br {}
-			br {}
-			br {}
 
-			a.open-tab[href="./"][target="_blank"] | Open new tab
+			div[style="margin-top: 60px;"] {
+				a.open-tab[href="./"][target="_blank"] | Open new tab
+			}
 
-			.colors {
-				.choose | Choose color
-				.latex {
-					for color in ctx.colors {
-						.color {
-							x-tap: ctx.chooseColor(color);
-							class: { active: color == ctx.bgcolor }
-							style: { background-color: color }
+
+			.example {
+				.colors {
+					.choose | Choose color
+					.latex {
+						for color in ctx.colors {
+							.color {
+								x-tap: ctx.chooseColor(color);
+								class: { active: color == ctx.bgcolor }
+								style: { background-color: color }
+							}
 						}
 					}
 				}
 			}
+
+			.example {
+				h3 |
+			}
+
 		</script>
 	</div>
 

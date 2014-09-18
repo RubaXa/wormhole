@@ -111,7 +111,8 @@
 		 * @returns {Emitter}
 		 */
 		on: function (name, fn) {
-			getListeners(this, name).push(fn);
+			var list = getListeners(this, name);
+			list.push(fn);
 			return this;
 		},
 
@@ -154,7 +155,7 @@
 				nargs
 			;
 
-			args = args === void 0 ? [] : [].concat(args);
+			args = (arguments.length === 0) ? [] : [].concat(args);
 			nargs = args.length;
 
 			while (i--) {
@@ -188,6 +189,9 @@
 
 		return target;
 	};
+
+
+	Emitter.getListeners = getListeners;
 
 
 	
@@ -335,7 +339,7 @@
 
 	var store,
 		_storage,
-		_storageNS = '__wormhole.store__:',
+		_storageNS = '__wormhole.store__.',
 		_storageData = {},
 
 		_parseJSON = JSON.parse,
@@ -349,7 +353,7 @@
 
 
 	function _isStoreKey(key) {
-		return key.indexOf(_storageNS) === 0;
+		return (key !== _storageNS) && key.indexOf(_storageNS) === 0;
 	}
 
 
@@ -437,21 +441,15 @@
 	function _onsync(evt) {
 		var fullKey = evt.key,
 			key = _getCleanedKey(fullKey),
-			newValue,
-			oldValue
+			newValue
 		;
 
 		if (key && _isStoreKey(fullKey)) {
-			newValue = _storage.getItem(fullKey);
-			oldValue = _stringifyJSON(_storageData[key]);
+			newValue = _parseJSON(_storage.getItem(fullKey));
+			_storageData[key] = newValue;
 
-			/* istanbul ignore else */
-			if (newValue !== oldValue) {
-				_storageData[key] = (newValue = _parseJSON(newValue));
-
-				store.emit('change', _storageData);
-				store.emit('change:' + key, newValue);
-			}
+			store.emit('change', [key, _storageData]);
+			store.emit('change:' + key, [key, newValue]);
 		}
 	}
 
@@ -472,7 +470,7 @@
 
 		/* istanbul ignore else */
 		if (window.addEventListener) {
-			window.addEventListener('storage', _onsync, false);
+			window.addEventListener('storage', _onsync);
 		} else {
 			window.attachEvent('onstorage', _onsync);
 		}
@@ -612,6 +610,8 @@
 
 	var MASTER_DELAY = 1000, // ms
 		PEERS_DELAY = MASTER_DELAY,
+		QUEUE_WAIT = MASTER_DELAY * 2, // ms время сколько держать очередь
+
 		_emitterEmit = Emitter.fn.emit
 	;
 
@@ -692,7 +692,7 @@
 		 * @type {Number}
 		 * @private
 		 */
-		_this._idx = _this._store('idx') || 0;
+		_this._idx = 0;
 
 
 		/**
@@ -942,25 +942,105 @@
 		_initStorageTransport: function () {
 			var _this = this;
 
-			_this.__onStorage = function () {
-				_this._onStorage();
+			// Реакция на обновление storage
+			_this.__onStorage = function (key, data) {
+				if (key === _this._storeKey('queue')) {
+					_this._processingQueue(data[key].items);
+				}
+				else if (key === _this._storeKey('meta')) {
+					_this._checkMeta();
+				}
 			};
+
+			// Обновить мета данные
+			_this.__updMeta = function () {
+				_this._checkMeta(true);
+			};
+
+			store.on('change', _this.__onStorage);
 
 			// Разрыв для нормальной работы синхронной подписки на события
 			_this._pid = setTimeout(function _tick() {
 				_this.emit = _this._storeEmit;
 				_this.connected = true;
 
-				store.on('change', _this.__onStorage);
 				_emitterEmit.call(_this, 'connect', _this);
 
-				_this._processingQueue(); // первый раз синхронно
-				_this._processingQueue = debounce(_this._processingQueue, 30);
+				_this._checkMeta();
+				_this._processingQueue();
 
-				_this._onStorage();
-
-				_this._pid = setInterval(_this.__onStorage, MASTER_DELAY/2);
+				_this._pid = setInterval(_this.__updMeta, MASTER_DELAY/2);
 			}, 0);
+		},
+
+
+
+		/**
+		 * Проверка мета данных
+		 * @param  {Boolean}  [upd]
+		 * @private
+		 */
+		_checkMeta: function (upd) {
+			var ts = now(),
+				meta = this._store('meta') || { id: 0, ts: 0, peers: {} },
+				peers = meta.peers,
+				id = this.id,
+				peersCount = 0
+			;
+
+
+			// Посчитаем кол-во peers
+			peers[id] = ts;
+
+			for (id in peers) {
+				if ((ts - peers[id]) > PEERS_DELAY) {
+					delete peers[id];
+				} else {
+					peersCount++;
+				}
+			}
+
+
+			// Обновляем кол-во пиров
+			if (this.length !== peersCount) {
+				this.length = peersCount;
+				_emitterEmit.call(this, 'peers', peersCount);
+			}
+
+
+
+			// Проверяем master, жив он или нет
+			/* istanbul ignore else */
+			if ((ts - meta.ts) > MASTER_DELAY || this.master) {
+				if (meta.id != this.id) {
+//					console.log('set.master:', this.id, ts - master.ts, ts);
+
+					upd = true;
+					meta.id = this.id;
+					this.master = true;
+
+					_emitterEmit.call(this, 'master', this);
+				}
+
+//				console.log('check.master:', this.id, ts - master.ts, ts);
+				meta.ts = ts;
+			}
+
+
+			if (upd) {
+				this._store('meta', meta);
+			}
+		},
+
+
+		/**
+		 * Получить ключь для store
+		 * @param   {String}  key
+		 * @returns {String}
+		 * @private
+		 */
+		_storeKey: function (key) {
+			return this._storePrefix + '.' + key;
 		},
 
 
@@ -972,7 +1052,7 @@
 		 * @private
 		 */
 		_store: function (key, value) {
-			key = this._storePrefix + '.' + key;
+			key = this._storeKey(key);
 
 			if (value === void 0) {
 				value = store.get(key);
@@ -1011,92 +1091,31 @@
 		 * @private
 		 */
 		_storeEmit: function (type, args) {
-			var idx = this._store('idx') || 0,
-				queue = this._store('queue') || [],
-				ts = now();
+			var queue = this._store('queue') || { items: [], idx: 0 },
+				ts = now(),
+				items = queue.items,
+				i = items.length
+			;
 
-			queue.push({
+			items.push({
 				ts: ts,
-				idx: ++idx,
+				idx: ++queue.idx,
 				type: type,
 				args: args,
 				source: this.id
 			});
 
-			this._store('idx', idx);
-			this._store('queue', queue);
+			while (i--) {
+				if (ts - items[i].ts > QUEUE_WAIT) {
+					items.splice(0, i);
+					break;
+				}
+			}
 
-			_emitterEmit.call(this, type, args);
+			this._store('queue', queue);
+			this._processingQueue(queue.items);
 
 			return this;
-		},
-
-
-		/**
-		 * Проверка изменений в хранилище
-		 * @private
-		 */
-		_onStorage: function () {
-			var ts = now(),
-				queue = this._store('queue'),
-				master = this._store('master'),
-				peers = this._store('peers') || {},
-				id = this.id,
-				peersCount = 0,
-				changedPeers = false
-			;
-
-//			console.log('_onStorage:', this.id, this._storePrefix, JSON.stringify(master));
-
-			// Посчитаем кол-во peers
-			if (peers[id] === void 0) {
-				peers[id] = ts;
-				changedPeers = true;
-			}
-
-			for (id in peers) {
-				if ((ts - peers[id]) > PEERS_DELAY) {
-					delete peers[id];
-					changedPeers = true;
-				} else {
-					peersCount++;
-				}
-			}
-
-			if (changedPeers) {
-				_emitterEmit.call(this, 'peers', peersCount);
-				this._store('peers', peers);
-			}
-
-
-			/* jshint eqnull:true */
-			if (master == null) {
-				master = { ts: 0, id: 0 };
-			}
-
-
-			// Проверяем master, жив он или нет
-			/* istanbul ignore else */
-			if ((ts - master.ts) > MASTER_DELAY || this.master) {
-				if (master.id != this.id) {
-//					console.log('set.master:', this.id, ts - master.ts, ts);
-
-					master.id = this.id;
-					this.master = true;
-
-					_emitterEmit.call(this, 'master', this);
-				}
-
-//				console.log('check.master:', this.id, ts - master.ts, ts);
-				master.ts = ts;
-				this._store('master', master);
-			}
-
-			/* istanbul ignore else */
-			if (queue) {
-//				console.log(this.id, this._idx, queue);
-				this._processingQueue(queue);
-			}
 		},
 
 
@@ -1123,9 +1142,9 @@
 					if (this._idx < evt.idx) {
 						this._idx = evt.idx;
 
-						if (evt.source !== this.id) {
+//						if (evt.source !== this.id) {
 							_emitterEmit.call(this, evt.type, evt.args);
-						}
+//						}
 					}
 				}
 			}
@@ -1152,6 +1171,8 @@
 		 * Уничтожить
 		 */
 		destroy: function () {
+			var meta = this._store('meta') || {};
+
 			clearTimeout(this._pid);
 			clearInterval(this._pid);
 
@@ -1161,7 +1182,6 @@
 			// Описываем все события
 			this.off();
 			store.off('change', this.__onStorage);
-
 
 			/* istanbul ignore next */
 			if (this.port) {
@@ -1174,9 +1194,15 @@
 			/* istanbul ignore else */
 			if (this.master) {
 				// Если я мастер, удаляем инфу об этом
+				meta.id = null;
 				this.master = false;
-				this._store('master', null);
 			}
+
+			if (meta.peers) {
+				delete meta.peers[this.id];
+			}
+
+			this._store('meta', meta);
 		}
 	};
 
