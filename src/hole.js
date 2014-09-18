@@ -1,7 +1,7 @@
 define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now, uuid, debounce, Emitter, store, Worker) {
-	var MASTER_DELAY = 500, // ms
-		PEERS_DELAY = MASTER_DELAY,
-		QUEUE_WAIT = MASTER_DELAY * 2, // ms время сколько держать очередь
+	var MASTER_DELAY = .5 * 1000, // ms
+		PEERS_DELAY = 5 * 1000, // ms
+		QUEUE_WAIT = 5 * 1000, // ms время сколько держать очередь
 
 		_emitterEmit = Emitter.fn.emit
 	;
@@ -402,7 +402,7 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 
 			// Проверяем master, жив он или нет
 			/* istanbul ignore else */
-			if ((ts - meta.ts) > MASTER_DELAY || this.master) {
+			if ((ts - (meta.ts||0)) > MASTER_DELAY || this.master) {
 				if (meta.id != this.id) {
 //					console.log('set.master:', this.id, ts - meta.ts, ts);
 
@@ -593,6 +593,7 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 				delete meta.peers[this.id];
 			}
 
+			meta.peers = {};
 			this._store('meta', meta);
 		}
 	};

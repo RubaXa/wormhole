@@ -8,6 +8,7 @@ define(["now", "uuid", "debounce", "cors", "emitter", "store", "worker", "hole"]
 		return singletonHole.instance;
 	};
 
+	Worker.support &= (window.wormhole && wormhole.workers);
 
 	// Export
 	singletonHole.now = now;

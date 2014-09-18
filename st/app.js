@@ -9,6 +9,7 @@
 
 		ctx.holes = 0;
 
+
 		hole.on('choose', function (num) {
 			ctx.$set('imageNum', num);
 		});
