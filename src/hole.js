@@ -1,5 +1,6 @@
 define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now, uuid, debounce, Emitter, store, Worker) {
-	var MASTER_DELAY = .5 * 1000, // ms
+	var MASTER_DELAY = 1000, // ms
+		UPD_META_DELAY = MASTER_DELAY / 2, // ms
 		PEERS_DELAY = 5 * 1000, // ms
 		QUEUE_WAIT = 5 * 1000, // ms время сколько держать очередь
 
@@ -327,7 +328,7 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 
 
 		/**
-		 * Инициализация траспорта на основе sessionStorage
+		 * Инициализация траспорта на основе store
 		 * @private
 		 */
 		_initStorageTransport: function () {
@@ -360,7 +361,7 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 				_this._checkMeta();
 				_this._processingQueue();
 
-				_this._pid = setInterval(_this.__updMeta, MASTER_DELAY/2);
+				_this._pid = setInterval(_this.__updMeta, UPD_META_DELAY);
 			}, 0);
 		},
 
@@ -382,6 +383,7 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 
 			// Посчитаем кол-во peers
 			peers[id] = ts;
+
 
 			for (id in peers) {
 				if ((ts - peers[id]) > PEERS_DELAY) {
@@ -593,7 +595,7 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 				delete meta.peers[this.id];
 			}
 
-			meta.peers = {};
+			meta.peers = meta.peers || {};
 			this._store('meta', meta);
 		}
 	};

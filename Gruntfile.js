@@ -74,6 +74,10 @@ module.exports = function (grunt) {
 				tasks: ['requirejs'],
 				options: { interrupt: true }
 			}
+		},
+
+		version: {
+			src: ['src/module.js']
 		}
 	});
 
@@ -123,9 +127,10 @@ module.exports = function (grunt) {
 	grunt.loadNpmTasks('grunt-qunit-istanbul');
 	grunt.loadNpmTasks('grunt-contrib-connect');
 	grunt.loadNpmTasks('grunt-contrib-watch');
+	grunt.loadNpmTasks('grunt-version');
 
 
 	grunt.registerTask('dev', ['connect', 'requirejs', 'watch']);
 	grunt.registerTask('test', ['jshint', 'requirejs', 'connect', 'qunit']);
-	grunt.registerTask('default', ['test']);
+	grunt.registerTask('default', ['test', 'version']);
 };

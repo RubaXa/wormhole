@@ -22,7 +22,7 @@ define([], function () {
 
 	/* istanbul ignore next */
 	var Worker = {
-		support: URL && Blob && SharedWorker,
+		support: !!(URL && Blob && SharedWorker),
 
 
 		/**

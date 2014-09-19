@@ -92,7 +92,7 @@
 			for (var i = 0; i < max; i++) {
 				/* jshint loopfunc:true */
 				tabs.push(_createWin('local.test.html?hole=' + i).then(function (el) {
-					var hole = newHole(el);
+					var hole = newHole(el, 'local.test.html?peers');
 					hole.el = el;
 					return hole;
 				}));

@@ -502,7 +502,7 @@
 
 	/* istanbul ignore next */
 	var Worker = {
-		support: URL && Blob && SharedWorker,
+		support: !!(URL && Blob && SharedWorker),
 
 
 		/**
@@ -608,7 +608,8 @@
 
 	
 
-	var MASTER_DELAY = .5 * 1000, // ms
+	var MASTER_DELAY = 1000, // ms
+		UPD_META_DELAY = MASTER_DELAY / 2, // ms
 		PEERS_DELAY = 5 * 1000, // ms
 		QUEUE_WAIT = 5 * 1000, // ms время сколько держать очередь
 
@@ -936,7 +937,7 @@
 
 
 		/**
-		 * Инициализация траспорта на основе sessionStorage
+		 * Инициализация траспорта на основе store
 		 * @private
 		 */
 		_initStorageTransport: function () {
@@ -969,7 +970,7 @@
 				_this._checkMeta();
 				_this._processingQueue();
 
-				_this._pid = setInterval(_this.__updMeta, MASTER_DELAY/2);
+				_this._pid = setInterval(_this.__updMeta, UPD_META_DELAY);
 			}, 0);
 		},
 
@@ -991,6 +992,7 @@
 
 			// Посчитаем кол-во peers
 			peers[id] = ts;
+
 
 			for (id in peers) {
 				if ((ts - peers[id]) > PEERS_DELAY) {
@@ -1202,7 +1204,7 @@
 				delete meta.peers[this.id];
 			}
 
-			meta.peers = {};
+			meta.peers = meta.peers || {};
 			this._store('meta', meta);
 		}
 	};
@@ -1219,9 +1221,12 @@
 		return singletonHole.instance;
 	};
 
+
 	Worker.support &= (window.wormhole && wormhole.workers);
 
+
 	// Export
+	singletonHole.version = '0.2.0';
 	singletonHole.now = now;
 	singletonHole.uuid = uuid;
 	singletonHole.debounce = debounce;
