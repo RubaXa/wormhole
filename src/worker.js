@@ -91,7 +91,7 @@ define([], function () {
 					}
 
 					checkMaster();
-				}, 300);
+				}, 500);
 
 
 				window.addEventListener('connect', function (evt) {
