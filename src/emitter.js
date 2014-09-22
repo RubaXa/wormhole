@@ -49,13 +49,13 @@ define([], function () {
 				delete this[__emitter__];
 			}
 			else {
-				var listeners = getListeners(this, name),
-					i = listeners.length;
+				var list = getListeners(this, name),
+					i = list.length;
 
 				while (i--) {
 					// Ищем слушателя и удаляем (indexOf - IE > 8)
-					if (listeners[i] === fn) {
-						listeners.splice(i, 1);
+					if (list[i] === fn) {
+						list.splice(i, 1);
 						break;
 					}
 				}

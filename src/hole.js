@@ -1,8 +1,8 @@
 define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now, uuid, debounce, Emitter, store, Worker) {
-	var MASTER_DELAY = 1000, // ms
-		UPD_META_DELAY = MASTER_DELAY / 2, // ms
-		PEERS_DELAY = 5 * 1000, // ms
-		QUEUE_WAIT = 5 * 1000, // ms время сколько держать очередь
+	var MASTER_DELAY = 20 * 1000, // sec, сколько времени считать мастер живым
+		UPD_META_DELAY = 15 * 1000, // sec, как часто обновлять мата данные
+		PEERS_DELAY = 30 * 1000, // sec, сколько времени считать peer живым
+		QUEUE_WAIT = 5 * 1000, // sec, за какой период времени держать очередь событий
 
 		_emitterEmit = Emitter.fn.emit
 	;
@@ -346,23 +346,23 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 
 			// Обновить мета данные
 			_this.__updMeta = function () {
+//				console.log('__updMeta: ' + _this.id + ', ' + _this.destroyed);
 				_this._checkMeta(true);
 			};
 
 			store.on('change', _this.__onStorage);
 
 			// Разрыв для нормальной работы синхронной подписки на события
-			_this._pid = setTimeout(function _tick() {
+			_this._pid = setTimeout(function () {
 				_this.emit = _this._storeEmit;
+				_this._pid = setInterval(_this.__updMeta, UPD_META_DELAY);
 				_this.connected = true;
 
 				_emitterEmit.call(_this, 'connect', _this);
 
-				_this._checkMeta();
+				_this.__updMeta();
 				_this._processingQueue();
-
-				_this._pid = setInterval(_this.__updMeta, UPD_META_DELAY);
-			}, 0);
+			}, 1);
 		},
 
 
@@ -377,7 +377,8 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 				meta = this._store('meta') || { id: 0, ts: 0, peers: {} },
 				peers = meta.peers,
 				id = this.id,
-				peersCount = 0
+				peersCount = 0,
+				emitMasterEvent = false
 			;
 
 
@@ -404,24 +405,24 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 
 			// Проверяем master, жив он или нет
 			/* istanbul ignore else */
-			if ((ts - (meta.ts||0)) > MASTER_DELAY || this.master) {
+			if (!meta.id || this.master || ts - meta.ts > MASTER_DELAY) {
 				if (meta.id != this.id) {
-//					console.log('set.master:', this.id, ts - meta.ts, ts);
+//					console.log('set.master:', this.id, ' dt: ', ts - meta.ts);
 
 					upd = true;
 					meta.id = this.id;
 					this.master = true;
-
-					_emitterEmit.call(this, 'master', this);
+					emitMasterEvent = true;
 				}
 
+//				console.log('check.master: ', this.id + ' <-> ' + meta.id, ' dt: ', ts - meta.ts);
 				meta.ts = ts;
-//				console.log('check.master:', this.id, ts - meta.ts, ts);
 			}
 
 
 			if (upd) {
 				this._store('meta', meta);
+				emitMasterEvent && _emitterEmit.call(this, 'master', this);
 			}
 		},
 
@@ -564,39 +565,43 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 		 * Уничтожить
 		 */
 		destroy: function () {
-			var meta = this._store('meta') || {};
+			if (!this.destroyed) {
+				this.connected = false;
+				this.destroyed = true;
 
-			clearTimeout(this._pid);
-			clearInterval(this._pid);
+				clearTimeout(this._pid);
+				clearInterval(this._pid);
 
-			this.connected = false;
-			this.destroyed = true;
+				// Описываем все события
+				this.off();
+				store.off('change', this.__onStorage);
 
-			// Описываем все события
-			this.off();
-			store.off('change', this.__onStorage);
+				/* istanbul ignore next */
+				if (this.port) {
+					this.port.removeEventListener('message', this.__onPortMessage);
+					this.port.postMessage('DESTROY');
+					this.port = null;
+					this.worker = null;
+				}
+				else {
+					var meta = this._store('meta') || {};
 
-			/* istanbul ignore next */
-			if (this.port) {
-				this.port.removeEventListener('message', this.__onPortMessage);
-				this.port.postMessage('DESTROY');
-				this.port = null;
-				this.worker = null;
-			}
+					/* istanbul ignore else */
+					if (this.master) {
+						// Если я мастер, удаляем инфу об этом
+						meta.ts = 0;
+						meta.id = 0;
+//						console.log('master destroyed');
+					}
 
-			/* istanbul ignore else */
-			if (this.master) {
-				// Если я мастер, удаляем инфу об этом
-				meta.ts = 0;
+					meta.peers = meta.peers || {};
+					delete meta.peers[this.id];
+
+					this._store('meta', meta);
+				}
+
 				this.master = false;
 			}
-
-			if (meta.peers) {
-				delete meta.peers[this.id];
-			}
-
-			meta.peers = meta.peers || {};
-			this._store('meta', meta);
 		}
 	};
 

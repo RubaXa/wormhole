@@ -2,7 +2,8 @@ define(["emitter"], function (Emitter) {
 	var store,
 		_storage,
 		_storageNS = '__wormhole.store__.',
-		_storageData = {},
+		_storageData = {}, // key => Object
+		_storageItems = {}, // key => String
 
 		_parseJSON = JSON.parse,
 		_stringifyJSON = JSON.stringify
@@ -68,8 +69,10 @@ define(["emitter"], function (Emitter) {
 		set: function (key, value) {
 			var fullKey = _storageKey(key);
 
-			_storage && _storage.setItem(fullKey, _stringifyJSON(value));
-			_onsync({ key: fullKey }); // принудительная синхронизация
+			value = _stringifyJSON(value);
+
+			_storage && _storage.setItem(fullKey, value);
+			_onsync({ key: fullKey }, value); // принудительная синхронизация
 		},
 
 
@@ -90,6 +93,7 @@ define(["emitter"], function (Emitter) {
 		 */
 		remove: function (key) {
 			delete _storageData[key];
+			delete _storageItems[key];
 			_storage && _storage.removeItem(_storageKey(key));
 		}
 	});
@@ -97,21 +101,42 @@ define(["emitter"], function (Emitter) {
 
 	/**
 	 * Обработчик обновления хранилища
-	 * @param evt
+	 * @param  {Event|Object}  evt
+	 * @param  {String}        [value]
 	 * @private
 	 */
-	function _onsync(evt) {
-		var fullKey = evt.key,
-			key = _getCleanedKey(fullKey),
-			newValue
-		;
+	function _onsync(evt, value) {
+		var i = 0,
+			n = _storage.length,
+			fullKey = evt.key,
+			key;
 
-		if (key && _isStoreKey(fullKey)) {
-			newValue = _parseJSON(_storage.getItem(fullKey));
-			_storageData[key] = newValue;
+		if (!fullKey) {
+			// Плохой браузер, придется искать самому, что изменилось
+			for (; i < n; i++ ) {
+				fullKey = _storage.key(i);
 
-			store.emit('change', [key, _storageData]);
-			store.emit('change:' + key, [key, newValue]);
+				if (_isStoreKey(fullKey)) {
+					value = _storage.getItem(fullKey);
+
+					if (_storageItems[fullKey] !== value) {
+						_storageItems[fullKey] = value;
+						_onsync({ key: fullKey }, value);
+					}
+				}
+			}
+		}
+		else if (_isStoreKey(fullKey)) {
+			key = _getCleanedKey(fullKey);
+
+			if (key) { // Фильтруем событий при проверки localStorage
+				value = value !== void 0 ? value : _storage.getItem(fullKey);
+				_storageData[key] = _parseJSON(value);
+				_storageItems[fullKey] = value + '';
+
+				store.emit('change', [key, _storageData]);
+				store.emit('change:' + key, [key, _storageData[key]]);
+			}
 		}
 	}
 
@@ -119,22 +144,29 @@ define(["emitter"], function (Emitter) {
 	// Получаем текущее состояние
 	_storage && (function () {
 		var i = _storage.length,
-			key;
+			fullKey,
+			key,
+			value;
 
 		/* istanbul ignore next */
 		while (i--) {
-			key = _storage.key(i);
+			fullKey = _storage.key(i);
 
-			if (_isStoreKey(key)) {
-				_storageData[_getCleanedKey(key)] = _parseJSON(_storage.getItem(key));
+			if (_isStoreKey(fullKey)) {
+				key = _getCleanedKey(fullKey);
+				value = _storage.getItem(fullKey);
+				_storageData[key] = _parseJSON(value);
+				_storageItems[fullKey] = value;
 			}
 		}
 
 		/* istanbul ignore else */
 		if (window.addEventListener) {
 			window.addEventListener('storage', _onsync);
+			document.addEventListener('storage', _onsync);
 		} else {
 			window.attachEvent('onstorage', _onsync);
+			document.attachEvent('onstorage', _onsync);
 		}
 	})();
 

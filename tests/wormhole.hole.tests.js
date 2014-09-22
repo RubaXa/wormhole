@@ -1,6 +1,8 @@
 (function _tryAgainTest(useStore) {
 	module('wormhole.Hole.' + (useStore ? 'store' : 'worker'));
 
+	var ie8 = /MSIE 8/.test(navigator.userAgent);
+
 
 	function newHole(el, url) {
 		var Hole = wormhole.Hole;
@@ -16,7 +18,8 @@
 	asyncTest('core', function () {
 		var log = [];
 		var fooLog = [];
-		var main = newHole();
+		var url = 'local.test.html?core';
+		var main = newHole(null, url);
 
 
 		main
@@ -36,19 +39,20 @@
 
 
 		_createWin('local.test.html?hole=1').then(function (el) {
-			newHole(el).on('connect', function () {
+			newHole(el, url).on('connect', function (hole) {
+				ie8 && hole.destroy();
 				$(el).remove();
 			});
 
 			_createWin('local.test.html?hole=2').then(function (el) {
-				newHole(el)
+				newHole(el, url)
 					.on('master', function () { log.push('master:slave'); })
 					.on('foo', function () { fooLog.push(this.id); })
 				;
 			});
 
 			_createWin('local.test.html?hole=3').then(function (el) {
-				newHole(el)
+				newHole(el, url)
 					.on('master', function () { log.push('master:slave'); })
 					.on('connect', function () { main.destroy(); })
 					.on('foo', function () { fooLog.push(this.id); })
@@ -57,14 +61,14 @@
 			});
 
 			_createWin('local.test.html?hole=4').then(function (el) {
-				newHole(el)
+				newHole(el, url)
 					.on('master', function () { log.push('master:slave'); })
 					.on('foo', function () { fooLog.push(this.id); })
 				;
 			});
 
 			_createWin('local.test.html?hole=5').then(function (el) {
-				newHole(el).on('master', function () { log.push('master:slave'); });
+				newHole(el, url).on('master', function () { log.push('master:slave'); });
 			});
 		});
 
@@ -91,7 +95,7 @@
 		function holes() {
 			for (var i = 0; i < max; i++) {
 				/* jshint loopfunc:true */
-				tabs.push(_createWin('local.test.html?hole=' + i).then(function (el) {
+				tabs.push(_createWin('local.test.html?peers=' + i).then(function (el) {
 					var hole = newHole(el, 'local.test.html?peers');
 					hole.el = el;
 					return hole;
@@ -128,7 +132,8 @@
 									count = cnt;
 								});
 
-								tabs.splice(0, removeCnt).forEach(function (hole) {
+								$.each(tabs.splice(0, removeCnt), function (i, hole) {
+									ie8 && hole.destroy();
 									$(hole.el).remove();
 								});
 
@@ -140,7 +145,8 @@
 										count = cnt;
 									});
 
-									tabs.forEach(function (hole) {
+									$.each(tabs, function (i, hole) {
+										ie8 && hole.destroy();
 										$(hole.el).remove();
 									});
 
@@ -167,28 +173,40 @@
 
 
 		for (var i = 0; i < max; i++) {
-			tabs.push(_createWin('local.test.html?hole=' + i));
+			tabs.push(_createWin('local.test.html?master=' + i));
 		}
 
 
 		$.when.apply($, tabs).then(function () {
-			[].forEach.call(arguments, function (el, i) {
-				newHole(el).on('master', function () {
-					ok(true, '#' + i);
-					log.push(this.id);
+			$.each(arguments, function (i, el) {
+				newHole(el, 'local.test.html?master')
+					.on('connect', function () {
+//						console.log('hole.connect: ' + this.id);
+					})
+					.on('master', function (hole) {
+						ok(true, '#' + i + ':' + hole.id);
+						log.push(hole.id);
 
-					$(el).remove();
+						ie8 && hole.destroy();
+						$(el).remove();
 
-					clearTimeout(pid);
-					pid = setTimeout(function () {
-						equal(log.length, max);
+						clearTimeout(pid);
+						pid = setTimeout(function () {
+							equal(log.length, max);
 
-						log.forEach(function (id, i) {
-							ok(log.indexOf(id, i + 1) === -1, true);
-						});
-						start();
-					}, 1100);
-				});
+							$.each(log, function (idx, id) {
+								for (var i = idx; i < log.length; i++) {
+									if (log[i] === id) {
+										ok(true, '#' + idx);
+										return;
+									}
+								}
+
+								ok(false, '#' + idx);
+							});
+							start();
+						}, 1100);
+					});
 			});
 		});
 	});
@@ -208,8 +226,8 @@
 
 
 		$.when.apply($, tabs).then(function () {
-			[].slice.call(arguments).forEach(function (el, i) {
-				var hole = newHole(el)
+			$.each(arguments, function (i, el) {
+				var hole = newHole(el, 'local.test.html?events')
 					.on('sync', function (data) {
 						syncLogs[i] = (syncLogs[i] || []);
 						syncLogs[i].push(data);
@@ -248,7 +266,7 @@
 
 	// Проверка вызова удаленных команд
 	asyncTest('cmd', function () {
-		var url = 'local.test.html',
+		var url = 'local.test.html?cmd',
 			actual = {},
 			expected = {},
 			

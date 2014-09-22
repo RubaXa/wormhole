@@ -49,7 +49,7 @@ define([], function () {
 
 
 				function checkMaster() {
-					if (!master && ports[0]) {
+					if (!master && (ports.length > 0)) {
 						master = ports[0];
 						master.postMessage('MASTER');
 					}
@@ -60,6 +60,20 @@ define([], function () {
 					ports.forEach(function (port) {
 						port.postMessage(data);
 					});
+				}
+
+
+				function removePort(port) {
+					var idx = ports.indexOf(port);
+
+					if (idx > -1) {
+						ports.splice(idx, 1);
+						peersUpdated();
+					}
+
+					if (port === master) {
+						master = null;
+					}
 				}
 
 
@@ -77,12 +91,7 @@ define([], function () {
 
 						if (port.zombie) {
 							// Убиваем зомби
-							if (port === master) {
-								master = null;
-							}
-
-							ports.splice(i, 1);
-							peersUpdated();
+							removePort(port);
 						}
 						else {
 							port.zombie = true; // Помечаем как зомби
@@ -91,7 +100,7 @@ define([], function () {
 					}
 
 					checkMaster();
-				}, 500);
+				}, 1000);
 
 
 				window.addEventListener('connect', function (evt) {
@@ -104,7 +113,8 @@ define([], function () {
 							port.zombie = false; // живой порт
 						}
 						else if (data === 'DESTROY') {
-							port.zombie = true;
+							removePort(port);
+							checkMaster();
 						}
 						else {
 							broadcast({ type: data.type, data: data.data });

@@ -128,13 +128,13 @@
 				delete this[__emitter__];
 			}
 			else {
-				var listeners = getListeners(this, name),
-					i = listeners.length;
+				var list = getListeners(this, name),
+					i = list.length;
 
 				while (i--) {
 					// Ищем слушателя и удаляем (indexOf - IE > 8)
-					if (listeners[i] === fn) {
-						listeners.splice(i, 1);
+					if (list[i] === fn) {
+						list.splice(i, 1);
 						break;
 					}
 				}
@@ -340,7 +340,8 @@
 	var store,
 		_storage,
 		_storageNS = '__wormhole.store__.',
-		_storageData = {},
+		_storageData = {}, // key => Object
+		_storageItems = {}, // key => String
 
 		_parseJSON = JSON.parse,
 		_stringifyJSON = JSON.stringify
@@ -406,8 +407,10 @@
 		set: function (key, value) {
 			var fullKey = _storageKey(key);
 
-			_storage && _storage.setItem(fullKey, _stringifyJSON(value));
-			_onsync({ key: fullKey }); // принудительная синхронизация
+			value = _stringifyJSON(value);
+
+			_storage && _storage.setItem(fullKey, value);
+			_onsync({ key: fullKey }, value); // принудительная синхронизация
 		},
 
 
@@ -428,6 +431,7 @@
 		 */
 		remove: function (key) {
 			delete _storageData[key];
+			delete _storageItems[key];
 			_storage && _storage.removeItem(_storageKey(key));
 		}
 	});
@@ -435,21 +439,42 @@
 
 	/**
 	 * Обработчик обновления хранилища
-	 * @param evt
+	 * @param  {Event|Object}  evt
+	 * @param  {String}        [value]
 	 * @private
 	 */
-	function _onsync(evt) {
-		var fullKey = evt.key,
-			key = _getCleanedKey(fullKey),
-			newValue
-		;
+	function _onsync(evt, value) {
+		var i = 0,
+			n = _storage.length,
+			fullKey = evt.key,
+			key;
 
-		if (key && _isStoreKey(fullKey)) {
-			newValue = _parseJSON(_storage.getItem(fullKey));
-			_storageData[key] = newValue;
+		if (!fullKey) {
+			// Плохой браузер, придется искать самому, что изменилось
+			for (; i < n; i++ ) {
+				fullKey = _storage.key(i);
 
-			store.emit('change', [key, _storageData]);
-			store.emit('change:' + key, [key, newValue]);
+				if (_isStoreKey(fullKey)) {
+					value = _storage.getItem(fullKey);
+
+					if (_storageItems[fullKey] !== value) {
+						_storageItems[fullKey] = value;
+						_onsync({ key: fullKey }, value);
+					}
+				}
+			}
+		}
+		else if (_isStoreKey(fullKey)) {
+			key = _getCleanedKey(fullKey);
+
+			if (key) { // Фильтруем событий при проверки localStorage
+				value = value !== void 0 ? value : _storage.getItem(fullKey);
+				_storageData[key] = _parseJSON(value);
+				_storageItems[fullKey] = value + '';
+
+				store.emit('change', [key, _storageData]);
+				store.emit('change:' + key, [key, _storageData[key]]);
+			}
 		}
 	}
 
@@ -457,22 +482,29 @@
 	// Получаем текущее состояние
 	_storage && (function () {
 		var i = _storage.length,
-			key;
+			fullKey,
+			key,
+			value;
 
 		/* istanbul ignore next */
 		while (i--) {
-			key = _storage.key(i);
+			fullKey = _storage.key(i);
 
-			if (_isStoreKey(key)) {
-				_storageData[_getCleanedKey(key)] = _parseJSON(_storage.getItem(key));
+			if (_isStoreKey(fullKey)) {
+				key = _getCleanedKey(fullKey);
+				value = _storage.getItem(fullKey);
+				_storageData[key] = _parseJSON(value);
+				_storageItems[fullKey] = value;
 			}
 		}
 
 		/* istanbul ignore else */
 		if (window.addEventListener) {
 			window.addEventListener('storage', _onsync);
+			document.addEventListener('storage', _onsync);
 		} else {
 			window.attachEvent('onstorage', _onsync);
+			document.attachEvent('onstorage', _onsync);
 		}
 	})();
 
@@ -529,7 +561,7 @@
 
 
 				function checkMaster() {
-					if (!master && ports[0]) {
+					if (!master && (ports.length > 0)) {
 						master = ports[0];
 						master.postMessage('MASTER');
 					}
@@ -540,6 +572,20 @@
 					ports.forEach(function (port) {
 						port.postMessage(data);
 					});
+				}
+
+
+				function removePort(port) {
+					var idx = ports.indexOf(port);
+
+					if (idx > -1) {
+						ports.splice(idx, 1);
+						peersUpdated();
+					}
+
+					if (port === master) {
+						master = null;
+					}
 				}
 
 
@@ -557,12 +603,7 @@
 
 						if (port.zombie) {
 							// Убиваем зомби
-							if (port === master) {
-								master = null;
-							}
-
-							ports.splice(i, 1);
-							peersUpdated();
+							removePort(port);
 						}
 						else {
 							port.zombie = true; // Помечаем как зомби
@@ -571,7 +612,7 @@
 					}
 
 					checkMaster();
-				}, 500);
+				}, 1000);
 
 
 				window.addEventListener('connect', function (evt) {
@@ -584,7 +625,8 @@
 							port.zombie = false; // живой порт
 						}
 						else if (data === 'DESTROY') {
-							port.zombie = true;
+							removePort(port);
+							checkMaster();
 						}
 						else {
 							broadcast({ type: data.type, data: data.data });
@@ -608,10 +650,10 @@
 
 	
 
-	var MASTER_DELAY = 1000, // ms
-		UPD_META_DELAY = MASTER_DELAY / 2, // ms
-		PEERS_DELAY = 5 * 1000, // ms
-		QUEUE_WAIT = 5 * 1000, // ms время сколько держать очередь
+	var MASTER_DELAY = 20 * 1000, // sec, сколько времени считать мастер живым
+		UPD_META_DELAY = 15 * 1000, // sec, как часто обновлять мата данные
+		PEERS_DELAY = 30 * 1000, // sec, сколько времени считать peer живым
+		QUEUE_WAIT = 5 * 1000, // sec, за какой период времени держать очередь событий
 
 		_emitterEmit = Emitter.fn.emit
 	;
@@ -955,23 +997,23 @@
 
 			// Обновить мета данные
 			_this.__updMeta = function () {
+//				console.log('__updMeta: ' + _this.id + ', ' + _this.destroyed);
 				_this._checkMeta(true);
 			};
 
 			store.on('change', _this.__onStorage);
 
 			// Разрыв для нормальной работы синхронной подписки на события
-			_this._pid = setTimeout(function _tick() {
+			_this._pid = setTimeout(function () {
 				_this.emit = _this._storeEmit;
+				_this._pid = setInterval(_this.__updMeta, UPD_META_DELAY);
 				_this.connected = true;
 
 				_emitterEmit.call(_this, 'connect', _this);
 
-				_this._checkMeta();
+				_this.__updMeta();
 				_this._processingQueue();
-
-				_this._pid = setInterval(_this.__updMeta, UPD_META_DELAY);
-			}, 0);
+			}, 1);
 		},
 
 
@@ -986,7 +1028,8 @@
 				meta = this._store('meta') || { id: 0, ts: 0, peers: {} },
 				peers = meta.peers,
 				id = this.id,
-				peersCount = 0
+				peersCount = 0,
+				emitMasterEvent = false
 			;
 
 
@@ -1013,24 +1056,24 @@
 
 			// Проверяем master, жив он или нет
 			/* istanbul ignore else */
-			if ((ts - (meta.ts||0)) > MASTER_DELAY || this.master) {
+			if (!meta.id || this.master || ts - meta.ts > MASTER_DELAY) {
 				if (meta.id != this.id) {
-//					console.log('set.master:', this.id, ts - meta.ts, ts);
+//					console.log('set.master:', this.id, ' dt: ', ts - meta.ts);
 
 					upd = true;
 					meta.id = this.id;
 					this.master = true;
-
-					_emitterEmit.call(this, 'master', this);
+					emitMasterEvent = true;
 				}
 
+//				console.log('check.master: ', this.id + ' <-> ' + meta.id, ' dt: ', ts - meta.ts);
 				meta.ts = ts;
-//				console.log('check.master:', this.id, ts - meta.ts, ts);
 			}
 
 
 			if (upd) {
 				this._store('meta', meta);
+				emitMasterEvent && _emitterEmit.call(this, 'master', this);
 			}
 		},
 
@@ -1173,39 +1216,43 @@
 		 * Уничтожить
 		 */
 		destroy: function () {
-			var meta = this._store('meta') || {};
+			if (!this.destroyed) {
+				this.connected = false;
+				this.destroyed = true;
 
-			clearTimeout(this._pid);
-			clearInterval(this._pid);
+				clearTimeout(this._pid);
+				clearInterval(this._pid);
 
-			this.connected = false;
-			this.destroyed = true;
+				// Описываем все события
+				this.off();
+				store.off('change', this.__onStorage);
 
-			// Описываем все события
-			this.off();
-			store.off('change', this.__onStorage);
+				/* istanbul ignore next */
+				if (this.port) {
+					this.port.removeEventListener('message', this.__onPortMessage);
+					this.port.postMessage('DESTROY');
+					this.port = null;
+					this.worker = null;
+				}
+				else {
+					var meta = this._store('meta') || {};
 
-			/* istanbul ignore next */
-			if (this.port) {
-				this.port.removeEventListener('message', this.__onPortMessage);
-				this.port.postMessage('DESTROY');
-				this.port = null;
-				this.worker = null;
-			}
+					/* istanbul ignore else */
+					if (this.master) {
+						// Если я мастер, удаляем инфу об этом
+						meta.ts = 0;
+						meta.id = 0;
+//						console.log('master destroyed');
+					}
 
-			/* istanbul ignore else */
-			if (this.master) {
-				// Если я мастер, удаляем инфу об этом
-				meta.ts = 0;
+					meta.peers = meta.peers || {};
+					delete meta.peers[this.id];
+
+					this._store('meta', meta);
+				}
+
 				this.master = false;
 			}
-
-			if (meta.peers) {
-				delete meta.peers[this.id];
-			}
-
-			meta.peers = meta.peers || {};
-			this._store('meta', meta);
 		}
 	};
 

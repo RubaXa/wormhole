@@ -3,7 +3,7 @@
 
 
 	asyncTest('core', function () {
-		var log = [0,0,0],
+		var log = [0, 0, 0],
 			holes = [],
 			_set = function (i) {
 				ok(true, '#' + i);
@@ -40,10 +40,10 @@
 
 		setTimeout(function () {
 			deepEqual(log, [1, 1, 1]);
-			holes.forEach(function (hole) {
+			$.each(holes, function (i, hole) {
 				hole.destroy();
 			});
 			start();
-		}, 500);
+		}, 1000);
 	});
 })();

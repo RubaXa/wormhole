@@ -29,6 +29,7 @@
 			log.push('change:foo-' + val);
 		});
 
+
 		// Создаем iframe на текущий домен
 		_createWin('local.test.html').then(function (el) {
 			// Получаем экземпляр store из iframe
