@@ -25,9 +25,10 @@
 
 
 	<script>
-		var wormhole = {
-			workers: true
-		};
+		var useRemoteServer,
+			wormhole = {
+				workers: true
+			};
 
 		QUnit.config.reorder = false;
 
@@ -55,6 +56,10 @@
 
 		if (/phatnomjs/i.test(navigator.userAgent)) {
 			document.domain = 'phatnom.js';
+			useRemoteServer = true;
+		}
+		else if (/local.git/.test(location)) {
+			useRemoteServer = true;
 		}
 	</script>
 

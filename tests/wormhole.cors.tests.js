@@ -1,4 +1,4 @@
-(function () {
+useRemoteServer && (function () {
 	module('wormhole.cors');
 
 
