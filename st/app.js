@@ -15,12 +15,12 @@
 		});
 
 
-		hole.on('peers', function (count) {
+		hole.on('peers', function (peers) {
 			if (hole.master) {
 				hole.emit('choose', ctx.imageNum);
 			}
 
-			ctx.$set('holes', count);
+			ctx.$set('holes', peers.length);
 		});
 
 

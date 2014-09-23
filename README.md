@@ -6,6 +6,7 @@ Is EventEmitter for communication between tabs.
  * Cross-domain communication
  * SharedWorkers or fallback to sessionStorage
  * IE 8+, Chrome 10+, FireFox 10+, Opera 10+, Safari 6+
+ * Test coverage ([run](http://rubaxa.github.io/wormhole/tests/))
 
 
 ---
