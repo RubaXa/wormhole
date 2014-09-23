@@ -76,7 +76,7 @@ define([], function () {
 				nargs
 			;
 
-			args = (arguments.length === 0) ? [] : [].concat(args);
+			args = (arguments.length === 1) ? [] : [].concat(args);
 			nargs = args.length;
 
 			while (i--) {

@@ -155,7 +155,7 @@
 				nargs
 			;
 
-			args = (arguments.length === 0) ? [] : [].concat(args);
+			args = (arguments.length === 1) ? [] : [].concat(args);
 			nargs = args.length;
 
 			while (i--) {
@@ -670,6 +670,26 @@
 
 
 	/**
+	 * Проверка наличия элемента в массиве
+	 * @param   {Array} array
+	 * @param   {*}     value
+	 * @returns {Boolean}
+	 * @private
+	 */
+	function _inArray(array, value) {
+		var i = array.length;
+
+		while (i--) {
+			if (array[i] === value) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+
+	/**
 	 * Выполнить команду
 	 * @param {Hole}     hole
 	 * @param {Object}   cmd
@@ -1105,11 +1125,35 @@
 
 		/**
 		 * Обновляем кол-во и список «дырок»
-		 * @param  {Array} peers
+		 * @param  {Array}  peers
 		 * @private
 		 */
 		_updPeers: function (peers) {
-			if (this.length !== peers.length) {
+			var id,
+				_peers = this._peers || [],
+				i = Math.max(peers.length, _peers.length),
+				changed = false;
+
+			while (i--) {
+				id = peers[i];
+
+				if (id && !_inArray(_peers, id)) {
+					changed = true;
+					_emitterEmit.call(this, 'peers:add', id);
+				}
+
+				if (_peers[i] != id) {
+					id = _peers[i];
+
+					if (id && !_inArray(peers, id)) {
+						changed = true;
+						_emitterEmit.call(this, 'peers:remove', id);
+					}
+				}
+			}
+
+			if (changed) {
+				this._peers = peers;
 				this.length = peers.length;
 				_emitterEmit.call(this, 'peers', [peers]);
 			}

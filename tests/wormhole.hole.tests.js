@@ -15,6 +15,13 @@
 	}
 
 
+	function createHole(url) {
+		return _createWin(url).then(function (el) {
+			return newHole(el, url);
+		});
+	}
+
+
 	asyncTest('core', function () {
 		var log = [];
 		var fooLog = [];
@@ -165,6 +172,48 @@
 					}, 1000);
 				});
 			}, 1000);
+		});
+	});
+
+
+	// Проверка событий
+	asyncTest('peers:events', function () {
+		var actual = {},
+			expected = {};
+
+		createHole('local.test.html?peers:event').then(function (hole) {
+			expected['add:' + hole.id] = 1;
+
+			hole.on('peers:add', function (id) {
+				actual['add:' + id] = 1;
+			});
+
+			setTimeout(function () {
+				createHole('local.test.html?peers:event').then(function (someHole) {
+					expected['add:' + someHole.id] = 1;
+					expected['some-add:' + hole.id] = 1;
+					expected['some-add:' + someHole.id] = 1;
+					expected['some-remove:' + hole.id] = 1;
+
+					someHole.on('peers:add', function (id) {
+						actual['some-add:' + id] = 1;
+					});
+
+					someHole.on('peers:remove', function (id) {
+						actual['some-remove:' + id] = 1;
+					});
+
+					setTimeout(function () {
+						equal(someHole.length, 2, 'length');
+						hole.destroy();
+
+						setTimeout(function () {
+							deepEqual(actual, expected);
+							start();
+						}, 100);
+					}, 100);
+				});
+			}, 100);
 		});
 	});
 

@@ -123,6 +123,46 @@ $.getData("/path/to/api").then(function (result) {
 ---
 
 
+### Peers
+
+```js
+womrhole()
+	.on("peers", function (peers) {
+		console.log("ids:", peers); // ["tab-id-1", "tab-id-2", ..]
+	})
+	.on("peers:add", function (id) {
+		// ..
+	})
+	.on("peers:remove", function (id) {
+		// ..
+	})
+;
+```
+
+---
+
+
+### Executing the command on master
+
+
+```js
+// Register command (all tabs)
+wormhole()["foo"] = function (data, next) {
+	// bla-bla-bla
+	next(null, data.reverse()); // or `next("error")`
+};
+
+
+// Calling the command (some tab)
+wormhole().call("foo", [1, 2, 3], function (err, results) {
+	console.log(results); // [3, 2, 1]
+})
+```
+
+
+---
+
+
 ### Сomponents
 
 
@@ -148,6 +188,7 @@ obj.emit("foo", [1, 2, 3]); // [1, 2, 3]
 
 
 ---
+
 
 #### wormhole.store
 Interface for `localStorage`.
@@ -176,3 +217,9 @@ wormhole.store.on("change:prop", function (key, value) {
 A universally unique identifier (UUID) is an identifier standard used in software construction,
 standardized by the Open Software Foundation (OSF) as part of the Distributed Computing Environment (DCE)
 (c) [wiki](https://en.wikipedia.org/wiki/Universally_unique_identifier).
+
+
+---
+
+
+##### wormhole.debounce(fn:`Function`, wait:`Function`):`Function`
