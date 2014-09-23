@@ -108,17 +108,19 @@
 		holes().then(function (tab) {
 			var count = 0;
 
-			tab.on('peers', function (cnt) {
-				ok(true, 'count: ' + cnt);
-				count = cnt;
+			arguments[Math.floor(max/2)].on('peers', function (peers) {
+				count = peers.length;
+				ok(true, 'count: ' + count);
 			});
 
 			setTimeout(function () {
 				equal(count, max, 'total: ' + max);
+				equal(tab.length, max, 'length: ' + max);
 
 				holes().then(function () {
 					setTimeout(function () {
 						equal(count, max*2, 'total: ' + max*2);
+						equal(tab.length, max*2, 'length: ' + max*2);
 
 						holes().then(function () {
 							var tabs = [].slice.call(arguments);
@@ -126,10 +128,11 @@
 
 							setTimeout(function () {
 								equal(count, max*3, 'total: ' + max*3);
+								equal(tab.length, max*3, 'length: ' + max*3);
 
-								tabs[10].on('peers', function (cnt) {
-									ok(true, '10.count: ' + cnt);
-									count = cnt;
+								tab = tabs[10].on('peers', function (peers) {
+									count = peers.length;
+									ok(true, '10.count: ' + count);
 								});
 
 								$.each(tabs.splice(0, removeCnt), function (i, hole) {
@@ -138,11 +141,12 @@
 								});
 
 								setTimeout(function () {
-									equal(count, max*3 - removeCnt, 'total: ' + max*3 - removeCnt);
+									equal(count, max*3 - removeCnt, 'total: ' + (max*3 - removeCnt));
+									equal(tab.length, max*3 - removeCnt, 'length: ' + (max*3 - removeCnt));
 
-									tabs.pop().on('peers', function (cnt) {
-										ok(true, 'pop.count: ' + cnt);
-										count = cnt;
+									tab = tabs.pop().on('peers', function (peers) {
+										count = peers.length;
+										ok(true, 'pop.count: ' + count);
 									});
 
 									$.each(tabs, function (i, hole) {
@@ -151,7 +155,8 @@
 									});
 
 									setTimeout(function () {
-										equal(count, 1, 'end');
+										equal(count, 1, 'total: 1');
+										equal(tab.length, 1, 'length: 1');
 										start();
 									}, 1000);
 								}, 1000);

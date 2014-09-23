@@ -195,12 +195,17 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 		 */
 		master: false,
 
-
 		/**
 		 * Уничтожен?
 		 * @type {Boolean}
 		 */
 		destroyed: false,
+
+		/**
+		 * Кол-во «дырок»
+		 * @type {Number}
+		 */
+		length: 0,
 
 
 		on: Emitter.fn.on,
@@ -311,19 +316,25 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 
 				this.emit = this._workerEmit;
 				this.ready = true;
+				this.port.postMessage({ hole: { id: this.id } });
+
 				this._processingQueue();
 
 				// Получили подтвреждение, что мы подсоединились
 				_emitterEmit.call(this, 'ready', this);
 			}
 			else if (evt === 'PING') {
-				// Тук-тук?
+				// Ping? Pong!
 				this.port.postMessage('PONG');
 			}
 			else if (evt === 'MASTER') {
 				// Сказали, что мы теперь мастер
 				this.master = true; // ОК
 				_emitterEmit.call(this, 'master', this);
+			}
+			else if (evt.type === 'peers') {
+				// Обновляем кол-во пиров
+				this._updPeers(evt.data);
 			}
 			else {
 //				console.log(this.id, evt.type);
@@ -382,34 +393,32 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 			var ts = now(),
 				meta = this._store('meta') || { id: 0, ts: 0, peers: {} },
 				peers = meta.peers,
+				peersList = [],
 				id = this.id,
-				peersCount = 0,
 				emitMasterEvent = false
 			;
 
 
-			// Посчитаем кол-во peers
+			// Обновляем время текущего пира
 			peers[id] = ts;
 
 
+			// Считаем кол-во и собираем массив
 			for (id in peers) {
 				if ((ts - peers[id]) > PEERS_DELAY) {
 					delete peers[id];
-				} else {
-					peersCount++;
+				}
+				else {
+					peersList.push(id);
 				}
 			}
 
 
-			// Обновляем кол-во пиров
-			if (this.length !== peersCount) {
-				this.length = peersCount;
-				_emitterEmit.call(this, 'peers', peersCount);
-			}
+			// Обновляем список пиров
+			this._updPeers(peersList);
 
 
-
-			// Проверяем master, жив он или нет
+			// Проверяем master: быть или не быть
 			/* istanbul ignore else */
 			if (!meta.id || this.master || ts - meta.ts > MASTER_DELAY) {
 				if (meta.id != this.id) {
@@ -429,6 +438,19 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 			if (upd) {
 				this._store('meta', meta);
 				emitMasterEvent && _emitterEmit.call(this, 'master', this);
+			}
+		},
+
+
+		/**
+		 * Обновляем кол-во и список «дырок»
+		 * @param  {Array} peers
+		 * @private
+		 */
+		_updPeers: function (peers) {
+			if (this.length !== peers.length) {
+				this.length = peers.length;
+				_emitterEmit.call(this, 'peers', [peers]);
 			}
 		},
 

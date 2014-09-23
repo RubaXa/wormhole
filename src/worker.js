@@ -78,7 +78,12 @@ define([], function () {
 
 
 				function peersUpdated() {
-					broadcast({ type: 'peers', data: ports.length });
+					broadcast({
+						type: 'peers',
+						data: ports.map(function (port) {
+							return port.holeId;
+						})
+					});
 				}
 
 
@@ -113,8 +118,14 @@ define([], function () {
 							port.zombie = false; // живой порт
 						}
 						else if (data === 'DESTROY') {
+							// Удаляем порт
 							removePort(port);
 							checkMaster();
+						}
+						else if (data.hole) {
+							// Обновление meta информации
+							port.holeId = data.hole.id;
+							peersUpdated();
 						}
 						else {
 							broadcast({ type: data.type, data: data.data });
@@ -127,7 +138,6 @@ define([], function () {
 					port.postMessage('CONNECTED');
 
 					checkMaster();
-					peersUpdated();
 				}, false);
 			}).toString() + ')(this, ' + _stringifyJSON(name) + ')';
 
