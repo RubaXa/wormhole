@@ -650,9 +650,9 @@
 
 	
 
-	var MASTER_DELAY = 20 * 1000, // sec, сколько времени считать мастер живым
-		UPD_META_DELAY = 15 * 1000, // sec, как часто обновлять мата данные
-		PEERS_DELAY = 30 * 1000, // sec, сколько времени считать peer живым
+	var MASTER_DELAY = 15 * 1000, // sec, сколько времени считать мастер живым
+		UPD_META_DELAY = 10 * 1000, // sec, как часто обновлять мата данные
+		PEERS_DELAY = 20 * 1000, // sec, сколько времени считать peer живым
 		QUEUE_WAIT = 5 * 1000, // sec, за какой период времени держать очередь событий
 
 		_emitterEmit = Emitter.fn.emit
@@ -705,6 +705,12 @@
 	function Hole(url, useStore) {
 		var _this = this,
 			_destroy = /* istanbul ignore next */ function () {
+				if (window.addEventListener) {
+					window.removeEventListener('unload', _destroy);
+				} else {
+					window.detachEvent('onunload', _destroy);
+				}
+
 				_this.destroy();
 			};
 
@@ -829,10 +835,10 @@
 		_attempt: 0,
 
 		/**
-		 * Статус подключения
+		 * Готовность «дырки»
 		 * @type {Boolean}
 		 */
-		connected: false,
+		ready: false,
 
 		/**
 		 * Мастер-флаг
@@ -955,11 +961,11 @@
 //				console.log(this.id, evt, this._store('sharedUrl'));
 
 				this.emit = this._workerEmit;
-				this.connected = true;
+				this.ready = true;
 				this._processingQueue();
 
 				// Получили подтвреждение, что мы подсоединились
-				_emitterEmit.call(this, 'connect', this);
+				_emitterEmit.call(this, 'ready', this);
 			}
 			else if (evt === 'PING') {
 				// Тук-тук?
@@ -1007,9 +1013,9 @@
 			_this._pid = setTimeout(function () {
 				_this.emit = _this._storeEmit;
 				_this._pid = setInterval(_this.__updMeta, UPD_META_DELAY);
-				_this.connected = true;
+				_this.ready = true;
 
-				_emitterEmit.call(_this, 'connect', _this);
+				_emitterEmit.call(_this, 'ready', _this);
 
 				_this.__updMeta();
 				_this._processingQueue();
@@ -1217,7 +1223,7 @@
 		 */
 		destroy: function () {
 			if (!this.destroyed) {
-				this.connected = false;
+				this.ready = false;
 				this.destroyed = true;
 
 				clearTimeout(this._pid);

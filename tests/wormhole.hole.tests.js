@@ -24,7 +24,7 @@
 
 		main
 			.emit('xxx')
-			.on('connect', function (hole) {
+			.on('ready', function (hole) {
 				if (useStore) {
 					ok(hole.emit === hole._storeEmit, 'sotreEmit');
 				} else {
@@ -32,14 +32,14 @@
 					ok(hole.emit === hole._workerEmit, 'workerEmit');
 				}
 
-				log.push('connect:' + hole.id);
+				log.push('ready:' + hole.id);
 			})
 			.on('master', function (hole) { log.push('master:' + hole.id); })
 		;
 
 
 		_createWin('local.test.html?hole=1').then(function (el) {
-			newHole(el, url).on('connect', function (hole) {
+			newHole(el, url).on('ready', function (hole) {
 				ie8 && hole.destroy();
 				$(el).remove();
 			});
@@ -54,7 +54,7 @@
 			_createWin('local.test.html?hole=3').then(function (el) {
 				newHole(el, url)
 					.on('master', function () { log.push('master:slave'); })
-					.on('connect', function () { main.destroy(); })
+					.on('ready', function () { main.destroy(); })
 					.on('foo', function () { fooLog.push(this.id); })
 					.emit('foo', [1, '-', 1])
 				;
@@ -77,7 +77,7 @@
 			main.destroy();
 
 			deepEqual(log, [
-				'connect:' + main.id,
+				'ready:' + main.id,
 				'master:' + main.id,
 				'master:slave'
 			]);
@@ -180,8 +180,8 @@
 		$.when.apply($, tabs).then(function () {
 			$.each(arguments, function (i, el) {
 				newHole(el, 'local.test.html?master')
-					.on('connect', function () {
-//						console.log('hole.connect: ' + this.id);
+					.on('ready', function () {
+//						console.log('hole.ready: ' + this.id);
 					})
 					.on('master', function (hole) {
 						ok(true, '#' + i + ':' + hole.id);
