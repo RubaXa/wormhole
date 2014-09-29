@@ -19,6 +19,7 @@ body {
 }
 
 .container {
+	margin: 30px 0;
 	width: 90%;
 	min-height: 70%;
 	display: inline-block;
@@ -108,16 +109,19 @@ body {
 
 
 .marcus {
-	color: #ccc;
 	opacity: .4;
 	right: 10px;
 	bottom: 10px;
 	position: absolute;
 	z-index: 1000;
 }
+	.marcus,
 	.marcus a {
-		color: #ccc;
+		color: #fff;
+		font-size: 13px;
+		font-family: Arial, Geneva, sans-serif;
 	}
-		.marcus a:hover {
-			color: #fff;
-		}
+
+	.marcus:hover {
+		opacity: .8;
+	}
