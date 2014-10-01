@@ -42,7 +42,7 @@ define([], function () {
 		 * Отписаться от событие
 		 * @param   {String}   name
 		 * @param   {Function} fn
-		 * @returns {emitter}
+		 * @returns {Emitter}
 		 */
 		off: function (name, fn) {
 			if (name === void 0) {
@@ -62,6 +62,22 @@ define([], function () {
 			}
 
 			return this;
+		},
+
+
+		/**
+		 * Подписаться на событие и отписаться сразу после его получения
+		 * @param   {String}   name
+		 * @param   {Function} fn
+		 * @returns {Emitter}
+		 */
+		one: function (name, fn) {
+			var proxy = function () {
+				this.off(name, proxy);
+				return fn.apply(this, arguments);
+			};
+
+			return this.on(name, proxy);
 		},
 
 
@@ -106,6 +122,7 @@ define([], function () {
 	Emitter.apply = function (target) {
 		target.on = Emitter.fn.on;
 		target.off = Emitter.fn.off;
+		target.one = Emitter.fn.one;
 		target.emit = Emitter.fn.emit;
 
 		return target;

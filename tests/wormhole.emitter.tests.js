@@ -67,4 +67,19 @@
 		emitter.off('change', foo);
 		equal(Emitter.getListeners(emitter, 'change').length, 0);
 	});
+
+
+	test('one', function () {
+		var log = [];
+		var emitter = new Emitter;
+
+		emitter.one('foo', function (x) {
+			log.push(x);
+		});
+
+		emitter.emit('foo', 'ok');
+		emitter.emit('foo', 'fail');
+
+		equal(log + '', 'ok');
+	});
 })(wormhole.Emitter);

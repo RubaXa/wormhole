@@ -32,7 +32,7 @@
 
 		QUnit.config.reorder = false;
 
-		var REMOTE_URL = 'http://127.0.0.1:4790/tests/';
+		var REMOTE_URL = 'http://127.0.0.1:4790/';
 		var $fixture = $('#qunit-fixture');
 
 
@@ -43,7 +43,7 @@
 				url = url.replace('remote:', REMOTE_URL);
 			}
 
-			$('<iframe src="' + (url || REMOTE_URL +  'cors.test.html')  + '"/>')
+			$('<iframe src="' + (url || REMOTE_URL +  'tests/cors.test.html')  + '"/>')
 				.load(function (evt) { dfd.resolve(evt.target); })
 				.appendTo($fixture)
 			;
@@ -52,13 +52,12 @@
 		}
 
 		try { localStorage.clear(); } catch (err) {}
-		try { sessionStorage.clear(); } catch (err) {}
 
 		if (/phatnomjs/i.test(navigator.userAgent)) {
 			document.domain = 'phatnom.js';
 			useRemoteServer = true;
 		}
-		else if (/local.git/.test(location)) {
+		else if (/local/.test(location)) {
 			useRemoteServer = true;
 		}
 	</script>
