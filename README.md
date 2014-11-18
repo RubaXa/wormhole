@@ -25,28 +25,37 @@ wormhole().on("coords", function (x, y) {
 wormhole().emit("coords", [5, 10]);
 ```
 
+
 ---
 
 
+
 ### CORS example
-:exclamation: Not implemented :exclamation:
+
+ 1. Create a subdomain, ex.: `http://wormhole.youdomain.com/`;
+ 2. Copy-paste [universal.html](universal.html) into root;
+ 3. Check access `http://wormhole.youdomain.com/universal.html`;
+ 4. [Profit]().
+
 
 ```js
-// http://foo.domain.com/
-var hole = new wormhole.Universal("http://domain.com/path/to/wormhole/wormhole.cors.html");
+// http://foo.youdomain.com/
+var hole = new wormhole.Universal("http://wormhole.youdomain.com/universal.html");
 
 hole.on("data", function (data) {
 	console.log(data);
 });
 
 
-// http://bar.domain.com/
-var hole = new wormhole.Universal("http://domain.com/path/to/wormhole/wormhole.cors.html");
+// http://bar.youdomain.com/
+var hole = new wormhole.Universal("http://wormhole.youdomain.com/universal.html");
 
 hole.emit("data", "any data");
 ```
 
+
 ---
+
 
 ### Master/slave example
 
