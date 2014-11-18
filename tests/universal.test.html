@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<script src="../wormhole.js"></script>
+	<script>
+		var hole = new wormhole.Universal('http://localhost:4791/universal.html', true);
+
+		hole.on('ready', function () {
+			console.log('READY:', hole._idx);
+		});
+
+		hole.emit('local', 2);
+
+		hole.on('remote', function (val) {
+			console.log('hole.on.remote:', val);
+			hole.emit('local', val + '!');
+		});
+	</script>
+</head>
+</html>

@@ -232,12 +232,7 @@
 			return new cors(el);
 		}
 
-		try {
-			// Если это iframe
-			el = el.contentWindow || /* istanbul ignore next */ el;
-		} catch (err) {}
-
-		this.window = el;
+		this.el = el;
 	}
 
 
@@ -271,7 +266,18 @@
 		 * @param {*} data
 		 */
 		send: function (data) {
-			this.window.postMessage(_corsExpando + _stringifyJSON(data), '*');
+			var window = this.el;
+
+			try {
+				// Если это iframe
+				window = window.contentWindow || /* istanbul ignore next */ window;
+			} catch (err) {
+			}
+
+			try {
+				window.postMessage(_corsExpando + _stringifyJSON(data), '*');
+			}
+			catch (err) {}
 		}
 	};
 
@@ -407,6 +413,7 @@
 
 	/**
 	 * @desc Хранилище
+	 * @module {store}
 	 */
 	store = Emitter.apply(/** @lends store */{
 		/**
@@ -450,6 +457,32 @@
 			delete _storageData[key];
 			delete _storageItems[key];
 			_storage && _storage.removeItem(_storageKey(key));
+		},
+
+
+		/**
+		 * Получить все данные из хранилища
+		 * @retruns {Array}
+		 */
+		getAll: function () {
+			var i = 0,
+				n,
+				key,
+				data = {};
+
+			if (_storage) {
+				n = _storage.length;
+
+				for (; i < n; i++ ) {
+					key = _storage.key(i);
+
+					if (_isStoreKey(key)) {
+						data[_getCleanedKey(key)] = _parseJSON(_storage.getItem(key));
+					}
+				}
+			}
+
+			return data;
 		}
 	});
 
@@ -465,6 +498,9 @@
 			n = _storage.length,
 			fullKey = evt.key,
 			key;
+
+		// Синхронизация работает
+		store.events = true;
 
 		if (!fullKey) {
 			// Плохой браузер, придется искать самому, что изменилось
@@ -510,6 +546,7 @@
 			if (_isStoreKey(fullKey)) {
 				key = _getCleanedKey(fullKey);
 				value = _storage.getItem(fullKey);
+
 				_storageData[key] = _parseJSON(value);
 				_storageItems[fullKey] = value;
 			}
@@ -523,7 +560,103 @@
 			window.attachEvent('onstorage', _onsync);
 			document.attachEvent('onstorage', _onsync);
 		}
+
+
+		// Проверяем рабочесть события хранилища (Bug #136356)
+//		_storage.setItem('ping', _storageNS);
+//		setTimeout(function () {
+//			_storage.removeItem('ping' + _storageNS);
+//
+//			if (!store.events) {
+//				console.log('onStorage not supported:', location.href, store.events);
+//				setInterval(function () { _onsync({}); }, 250);
+//			}
+//		}, 500);
 	})();
+
+
+	/**
+	 * Получить удаленное хранилище
+	 * @param   {string}   url
+	 * @param   {function} ready
+	 * @returns {store}
+	 */
+	store.remote = function (url, ready) {
+		var _data = {},
+			_store = Emitter.apply({
+				set: function (key, name) {
+					_data[key] = name;
+
+					_store.emit('change', [key, _data]);
+					_store.emit('change:' + key, [key, _data[key]]);
+				},
+
+				get: function (key) {
+					return _data[key];
+				}
+			}),
+
+			iframe = document.createElement('iframe'),
+			adapter = cors(iframe);
+
+
+		iframe.onload = function () {
+			adapter.call('register', [], function (err, storeData) {
+				if (storeData) {
+					iframe.onload = null;
+
+					// Получаем данные хранилища
+					for (var key in storeData) {
+						_data[key] = storeData[key];
+					}
+
+					// Получаем данные от iframe
+					cors.on('data', function (evt) {
+						var key = evt.key,
+							data = evt.data,
+							value = data[key];
+
+						_data[key] = value;
+
+						_store.emit('change', [key, data]);
+						_store.emit('change:' + key, [key, value]);
+					});
+
+					// Установить
+					_store.set = function (key, value) {
+						adapter.call('store', { cmd: 'set', key: key, value: value });
+					};
+
+					// Удалить
+					_store.remove = function (key) {
+						delete _data[key];
+						adapter.call('store', { cmd: 'remove', key: key });
+					};
+
+					ready && ready(_store);
+				}
+			});
+		};
+
+
+		iframe.src = url;
+		iframe.style.left = '-1000px';
+		iframe.style.position = 'absolute';
+
+
+		// Пробуем вставить в body
+		(function _tryAgain() {
+			try {
+				document.body.appendChild(iframe);
+			} catch (err) {
+				setTimeout(_tryAgain, 100);
+			}
+		})();
+
+
+		return _store;
+	};
+
 
 
 	
@@ -770,6 +903,13 @@
 
 
 		/**
+		 * Объект хранилища
+		 * @type {store}
+		 */
+		_this.store;
+
+
+		/**
 		 * Название группы
 		 * @type {String}
 		 */
@@ -780,7 +920,7 @@
 		 * @type {String}
 		 * @private
 		 */
-		_this._storePrefix = '__hole__.' + uuid.hash(_this.url);
+		_this._storePrefix = uuid.hash(_this.url);
 
 
 		/**
@@ -788,7 +928,7 @@
 		 * @type {Number}
 		 * @private
 		 */
-		_this._idx = (_this._store('queue') || {}).idx || 0;
+		_this._idx;
 
 
 		/**
@@ -856,16 +996,21 @@
 		});
 
 
-		try {
-			/* istanbul ignore next */
-			if (!useStore && Worker.support) {
-				_this._initSharedWorkerTransport();
-			} else {
-				throw "NOT_SUPPORTED";
+		// Получи сторадж
+		_this._initStorage(function (store) {
+			_this.store = store;
+
+			try {
+				/* istanbul ignore next */
+				if (!useStore && Worker.support) {
+					_this._initSharedWorkerTransport();
+				} else {
+					throw "NOT_SUPPORTED";
+				}
+			} catch (err) {
+				_this._initStorageTransport();
 			}
-		} catch (err) {
-			_this._initStorageTransport();
-		}
+		});
 
 
 		/* istanbul ignore next */
@@ -945,6 +1090,22 @@
 		emit: function (type, args) {
 			this._queue.push({ ts: now(), type: type, args: args });
 			return this;
+		},
+
+
+		/**
+		 * Инициализиция хранилища
+		 * @private
+		 */
+		_initStorage: function (callback) {
+			var match = this.url.toLowerCase().match(/^(https?:)?\/\/([^/]+)/);
+
+			if (match && match[2] !== document.domain) {
+				return store.remote(this.url, callback);
+			} else {
+				callback(store);
+				return store;
+			}
 		},
 
 
@@ -1043,11 +1204,14 @@
 
 
 		/**
-		 * Инициализация траспорта на основе store
+		 * Инициализация транспорта на основе store
 		 * @private
 		 */
 		_initStorageTransport: function () {
 			var _this = this;
+
+			_this._idx = (_this._store('queue') || {}).idx || 0;
+
 
 			// Реакция на обновление storage
 			_this.__onStorage = function (key, data) {
@@ -1059,13 +1223,16 @@
 				}
 			};
 
+
 			// Обновить мета данные
 			_this.__updMeta = function () {
 //				console.log('__updMeta: ' + _this.id + ', ' + _this.destroyed);
 				_this._checkMeta(true);
 			};
 
-			store.on('change', _this.__onStorage);
+
+			_this.store.on('change', _this.__onStorage);
+
 
 			// Разрыв для нормальной работы синхронной подписки на события
 			_this._pid = setTimeout(function () {
@@ -1199,10 +1366,10 @@
 			key = this._storeKey(key);
 
 			if (value === void 0) {
-				value = store.get(key);
+				value = this.store.get(key);
 			}
 			else {
-				store.set(key, value);
+				this.store.set(key, value);
 			}
 
 			return value;
@@ -1372,15 +1539,17 @@
 
 
 	// Export
-	singletonHole.version = '0.2.0';
+	singletonHole.version = '0.3.0';
 	singletonHole.now = now;
 	singletonHole.uuid = uuid;
 	singletonHole.debounce = debounce;
 	singletonHole.cors = cors;
 	singletonHole.store = store;
 	singletonHole.Emitter = Emitter;
-	singletonHole.Hole = Hole;
 	singletonHole.Worker = Worker;
+
+	singletonHole.Hole = Hole;
+	singletonHole.Universal = Hole;
 
 
 	/* istanbul ignore next */

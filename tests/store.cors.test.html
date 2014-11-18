@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<script src="../wormhole.js"></script>
+	<script>
+		wormhole.store.remote('http://localhost:4791/universal.html', function (store) {
+			console.log('wormhole.store.remote: ready');
+			store.set('foo', 'remote');
+		});
+	</script>
+</head>
+</html>

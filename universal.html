@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8"/>
+	<script src="wormhole.js"></script>
+	<script>
+		(function (cors, store) {
+			// Регистрируем обработчик
+			cors.register = function (data, source) {
+				var adapter = cors(source);
+
+
+				store.on('change', function (key, data) {
+//					console.log('remote.change:', key, data[key]);
+					adapter.send({ key: key, data: data });
+				});
+
+				return store.getAll();
+			};
+
+
+			// Работа со стороджем
+			cors.store = function (data) {
+//				console.log('remote.store:', data);
+				store[data.cmd](data.key, data.value);
+			};
+		})(wormhole.cors, wormhole.store);
+	</script>
+</head>
+</html>

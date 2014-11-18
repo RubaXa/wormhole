@@ -3,7 +3,7 @@
 
 
 	// Проверяем работу хранилища и его изменения
-	asyncTest('store', function () {
+	asyncTest('local', function () {
 		var log = [];
 		var store = wormhole.store;
 		var rand = Math.random();
@@ -70,4 +70,29 @@
 		});
 	});
 
+
+	asyncTest('remote', function () {
+		var log = [],
+			rnd = Math.random(),
+			store = wormhole.store.remote('http://localhost:4791/universal.html', function (_store) {
+				equal(store, _store, 'ready');
+				_store.set('foo', rnd);
+			});
+
+
+		store.on('change', function (key) {
+			log.push(key);
+		});
+
+		store.on('change:foo', function (key, val) {
+			log.push(val);
+		});
+
+		_createWin('remote:store.cors.test.html').always(function () {
+			setTimeout(function () {
+				deepEqual(log, ['foo', rnd, 'foo', 'remote']);
+				start();
+			}, 1000);
+		});
+	});
 })();

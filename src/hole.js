@@ -92,6 +92,13 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 
 
 		/**
+		 * Объект хранилища
+		 * @type {store}
+		 */
+		_this.store;
+
+
+		/**
 		 * Название группы
 		 * @type {String}
 		 */
@@ -102,7 +109,7 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 		 * @type {String}
 		 * @private
 		 */
-		_this._storePrefix = '__hole__.' + uuid.hash(_this.url);
+		_this._storePrefix = uuid.hash(_this.url);
 
 
 		/**
@@ -110,7 +117,7 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 		 * @type {Number}
 		 * @private
 		 */
-		_this._idx = (_this._store('queue') || {}).idx || 0;
+		_this._idx;
 
 
 		/**
@@ -178,16 +185,21 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 		});
 
 
-		try {
-			/* istanbul ignore next */
-			if (!useStore && Worker.support) {
-				_this._initSharedWorkerTransport();
-			} else {
-				throw "NOT_SUPPORTED";
+		// Получи сторадж
+		_this._initStorage(function (store) {
+			_this.store = store;
+
+			try {
+				/* istanbul ignore next */
+				if (!useStore && Worker.support) {
+					_this._initSharedWorkerTransport();
+				} else {
+					throw "NOT_SUPPORTED";
+				}
+			} catch (err) {
+				_this._initStorageTransport();
 			}
-		} catch (err) {
-			_this._initStorageTransport();
-		}
+		});
 
 
 		/* istanbul ignore next */
@@ -267,6 +279,22 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 		emit: function (type, args) {
 			this._queue.push({ ts: now(), type: type, args: args });
 			return this;
+		},
+
+
+		/**
+		 * Инициализиция хранилища
+		 * @private
+		 */
+		_initStorage: function (callback) {
+			var match = this.url.toLowerCase().match(/^(https?:)?\/\/([^/]+)/);
+
+			if (match && match[2] !== document.domain) {
+				return store.remote(this.url, callback);
+			} else {
+				callback(store);
+				return store;
+			}
 		},
 
 
@@ -365,11 +393,14 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 
 
 		/**
-		 * Инициализация траспорта на основе store
+		 * Инициализация транспорта на основе store
 		 * @private
 		 */
 		_initStorageTransport: function () {
 			var _this = this;
+
+			_this._idx = (_this._store('queue') || {}).idx || 0;
+
 
 			// Реакция на обновление storage
 			_this.__onStorage = function (key, data) {
@@ -381,13 +412,16 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 				}
 			};
 
+
 			// Обновить мета данные
 			_this.__updMeta = function () {
 //				console.log('__updMeta: ' + _this.id + ', ' + _this.destroyed);
 				_this._checkMeta(true);
 			};
 
-			store.on('change', _this.__onStorage);
+
+			_this.store.on('change', _this.__onStorage);
+
 
 			// Разрыв для нормальной работы синхронной подписки на события
 			_this._pid = setTimeout(function () {
@@ -521,10 +555,10 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 			key = this._storeKey(key);
 
 			if (value === void 0) {
-				value = store.get(key);
+				value = this.store.get(key);
 			}
 			else {
-				store.set(key, value);
+				this.store.set(key, value);
 			}
 
 			return value;
