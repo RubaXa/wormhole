@@ -18,12 +18,7 @@ define(["emitter"], function (Emitter) {
 			return new cors(el);
 		}
 
-		try {
-			// Если это iframe
-			el = el.contentWindow || /* istanbul ignore next */ el;
-		} catch (err) {}
-
-		this.window = el;
+		this.el = el;
 	}
 
 
@@ -57,7 +52,18 @@ define(["emitter"], function (Emitter) {
 		 * @param {*} data
 		 */
 		send: function (data) {
-			this.window.postMessage(_corsExpando + _stringifyJSON(data), '*');
+			var window = this.el;
+
+			try {
+				// Если это iframe
+				window = window.contentWindow || /* istanbul ignore next */ window;
+			} catch (err) {
+			}
+
+			try {
+				window.postMessage(_corsExpando + _stringifyJSON(data), '*');
+			}
+			catch (err) {}
 		}
 	};
 
