@@ -6,9 +6,15 @@ module.exports = function (grunt) {
 
 
 		connect: {
-			server: {
+			cors: {
 				options: {
 					port: 4790,
+					base: '.'
+				}
+			},
+			hole: {
+				options: {
+					port: 4791,
 					base: '.'
 				}
 			}
