@@ -537,7 +537,12 @@
 		var i = _storage.length,
 			fullKey,
 			key,
-			value;
+			value,
+			_onsyncNext = function (evt) {
+				setTimeout(function () {
+					_onsync(evt);
+				}, 0);
+			};
 
 		/* istanbul ignore next */
 		while (i--) {
@@ -554,11 +559,11 @@
 
 		/* istanbul ignore else */
 		if (window.addEventListener) {
-			window.addEventListener('storage', _onsync);
-			document.addEventListener('storage', _onsync);
+			window.addEventListener('storage', _onsyncNext);
+			document.addEventListener('storage', _onsyncNext);
 		} else {
-			window.attachEvent('onstorage', _onsync);
-			document.attachEvent('onstorage', _onsync);
+			window.attachEvent('onstorage', _onsyncNext);
+			document.attachEvent('onstorage', _onsyncNext);
 		}
 
 
@@ -1285,20 +1290,21 @@
 
 			// Проверяем master: быть или не быть
 			/* istanbul ignore else */
-			if (!meta.id || this.master || ts - meta.ts > MASTER_DELAY) {
-				if (meta.id != this.id) {
-//					console.log('set.master:', this.id, ' dt: ', ts - meta.ts);
+			if ((!meta.id || ts - meta.ts > MASTER_DELAY)) {
+				//console.log('check.master: ', id + ' <-> ' + meta.id, ' dt: ', ts - meta.ts, this.master);
 
+				if (meta.id != id) {
+					//console.log('set.master:', id, ' dt: ', ts - meta.ts, [meta.id, ts, meta.ts]);
 					upd = true;
-					meta.id = this.id;
-					this.master = true;
+					meta.id = id;
 					emitMasterEvent = true;
+					this.master = true;
 				}
-
-//				console.log('check.master: ', this.id + ' <-> ' + meta.id, ' dt: ', ts - meta.ts);
-				meta.ts = ts;
 			}
 
+			if (this.master) {
+				meta.ts = ts;
+			}
 
 			if (upd) {
 				this._store('meta', meta);
@@ -1539,7 +1545,7 @@
 
 
 	// Export
-	singletonHole.version = '0.6.0';
+	singletonHole.version = '0.6.1';
 	singletonHole.now = now;
 	singletonHole.uuid = uuid;
 	singletonHole.debounce = debounce;

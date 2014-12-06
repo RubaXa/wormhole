@@ -474,20 +474,21 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 
 			// Проверяем master: быть или не быть
 			/* istanbul ignore else */
-			if (!meta.id || this.master || ts - meta.ts > MASTER_DELAY) {
-				if (meta.id != this.id) {
-//					console.log('set.master:', this.id, ' dt: ', ts - meta.ts);
+			if ((!meta.id || ts - meta.ts > MASTER_DELAY)) {
+				//console.log('check.master: ', id + ' <-> ' + meta.id, ' dt: ', ts - meta.ts, this.master);
 
+				if (meta.id != id) {
+					//console.log('set.master:', id, ' dt: ', ts - meta.ts, [meta.id, ts, meta.ts]);
 					upd = true;
-					meta.id = this.id;
-					this.master = true;
+					meta.id = id;
 					emitMasterEvent = true;
+					this.master = true;
 				}
-
-//				console.log('check.master: ', this.id + ' <-> ' + meta.id, ' dt: ', ts - meta.ts);
-				meta.ts = ts;
 			}
 
+			if (this.master) {
+				meta.ts = ts;
+			}
 
 			if (upd) {
 				this._store('meta', meta);

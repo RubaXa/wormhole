@@ -4,10 +4,16 @@
 	xtpl.ctrl('main', function (ctx) {
 		var hole = wormhole();
 
+		ctx.holes = 0;
 		ctx.images = [1, 2, 3, 4, 5];
 		ctx.imageNum = ctx.images[Math.random() * ctx.images.length | 0];
 
-		ctx.holes = 0;
+
+		//console.log('hole:', hole.id);
+		//
+		//hole.on('master', function () {
+		//	console.log('I master');
+		//});
 
 
 		hole.on('choose', function (num) {

@@ -176,7 +176,12 @@ define(["emitter", "cors"], function (Emitter, cors) {
 		var i = _storage.length,
 			fullKey,
 			key,
-			value;
+			value,
+			_onsyncNext = function (evt) {
+				setTimeout(function () {
+					_onsync(evt);
+				}, 0);
+			};
 
 		/* istanbul ignore next */
 		while (i--) {
@@ -193,11 +198,11 @@ define(["emitter", "cors"], function (Emitter, cors) {
 
 		/* istanbul ignore else */
 		if (window.addEventListener) {
-			window.addEventListener('storage', _onsync);
-			document.addEventListener('storage', _onsync);
+			window.addEventListener('storage', _onsyncNext);
+			document.addEventListener('storage', _onsyncNext);
 		} else {
-			window.attachEvent('onstorage', _onsync);
-			document.attachEvent('onstorage', _onsync);
+			window.attachEvent('onstorage', _onsyncNext);
+			document.attachEvent('onstorage', _onsyncNext);
 		}
 
 
