@@ -137,6 +137,7 @@ module.exports = function (grunt) {
 
 
 	grunt.registerTask('dev', ['connect', 'requirejs', 'watch']);
-	grunt.registerTask('test', ['jshint', 'requirejs', 'connect', 'qunit']);
-	grunt.registerTask('default', ['test', 'version']);
+	grunt.registerTask('build', ['version', 'requirejs']);
+	grunt.registerTask('test', ['jshint', 'build', 'connect', 'qunit']);
+	grunt.registerTask('default', ['test']);
 };
