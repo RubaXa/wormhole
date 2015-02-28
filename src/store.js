@@ -1,7 +1,7 @@
 define(["emitter", "cors"], function (Emitter, cors) {
 	var store,
 		_storage,
-		_storageNS = '__wormhole.store__.',
+		_storageNS = '__wh.store__.',
 		_storageData = {}, // key => Object
 		_storageItems = {}, // key => String
 
@@ -16,7 +16,7 @@ define(["emitter", "cors"], function (Emitter, cors) {
 
 
 	function _isStoreKey(key) {
-		return (key !== _storageNS) && key.indexOf(_storageNS) === 0;
+		return key && (key !== _storageNS) && (key.indexOf(_storageNS) === 0);
 	}
 
 
@@ -122,6 +122,22 @@ define(["emitter", "cors"], function (Emitter, cors) {
 			}
 
 			return data;
+		},
+
+
+		/**
+		 * Пройтись по всем ключам
+		 * @param  {Function}  iterator
+		 */
+		each: function (iterator) {
+			if (_storage) {
+				for (var i = 0, n = _storage.length, key; i < n; i++) {
+					key = _storage.key(i);
+					if (_isStoreKey(key)) {
+						iterator(_storage.getItem(key), _getCleanedKey(key));
+					}
+				}
+			}
 		}
 	});
 
@@ -237,6 +253,22 @@ define(["emitter", "cors"], function (Emitter, cors) {
 
 				get: function (key) {
 					return _data[key];
+				},
+
+				remove: function (key) {
+					delete _data[key];
+				},
+
+				getAll: function () {
+					return _data;
+				},
+
+				each: function (iterator) {
+					for (var key in _data) {
+						if (_data.hasOwnProperty(key)) {
+							iterator(_data, key);
+						}
+					}
 				}
 			}),
 

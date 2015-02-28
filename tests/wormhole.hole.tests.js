@@ -41,43 +41,45 @@
 
 				log.push('ready:' + hole.id);
 			})
-			.on('master', function (hole) { log.push('master:' + hole.id); })
-		;
+			.on('master', function (hole) {
+				log.push('master:' + hole.id);
 
 
-		_createWin('local.test.html?hole=1').then(function (el) {
-			newHole(el, url).on('ready', function (hole) {
-				ie8 && hole.destroy();
-				$(el).remove();
-			});
+				_createWin('local.test.html?hole=1').then(function (el) {
+					newHole(el, url).on('ready', function (hole) {
+						ie8 && hole.destroy();
+						$(el).remove();
+					});
 
-			_createWin('local.test.html?hole=2').then(function (el) {
-				newHole(el, url)
-					.on('master', function () { log.push('master:slave'); })
-					.on('foo', function () { fooLog.push(this.id); })
-				;
-			});
+					_createWin('local.test.html?hole=2').then(function (el) {
+						newHole(el, url)
+							.on('master', function () { log.push('master:slave'); })
+							.on('foo', function () { fooLog.push(this.id); })
+						;
+					});
 
-			_createWin('local.test.html?hole=3').then(function (el) {
-				newHole(el, url)
-					.on('master', function () { log.push('master:slave'); })
-					.on('ready', function () { main.destroy(); })
-					.on('foo', function () { fooLog.push(this.id); })
-					.emit('foo', [1, '-', 1])
-				;
-			});
+					_createWin('local.test.html?hole=3').then(function (el) {
+						newHole(el, url)
+							.on('master', function () { log.push('master:slave'); })
+							.on('ready', function () { main.destroy(); })
+							.on('foo', function () { fooLog.push(this.id); })
+							.emit('foo', [1, '-', 1])
+						;
+					});
 
-			_createWin('local.test.html?hole=4').then(function (el) {
-				newHole(el, url)
-					.on('master', function () { log.push('master:slave'); })
-					.on('foo', function () { fooLog.push(this.id); })
-				;
-			});
+					_createWin('local.test.html?hole=4').then(function (el) {
+						newHole(el, url)
+							.on('master', function () { log.push('master:slave'); })
+							.on('foo', function () { fooLog.push(this.id); })
+						;
+					});
 
-			_createWin('local.test.html?hole=5').then(function (el) {
-				newHole(el, url).on('master', function () { log.push('master:slave'); });
-			});
+					_createWin('local.test.html?hole=5').then(function (el) {
+						newHole(el, url).on('master', function () { log.push('master:slave'); });
+					});
+				});
 		});
+
 
 
 		setTimeout(function () {
@@ -246,7 +248,7 @@
 
 						clearTimeout(pid);
 						pid = setTimeout(function () {
-							equal(log.length, max);
+							equal(log.length, max); // кол-во мастеров
 
 							$.each(log, function (idx, id) {
 								for (var i = idx; i < log.length; i++) {
@@ -259,7 +261,7 @@
 								ok(false, '#' + idx);
 							});
 							start();
-						}, 1100);
+						}, 1500);
 					});
 			});
 		});

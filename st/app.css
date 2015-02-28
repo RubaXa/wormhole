@@ -47,7 +47,9 @@ body {
 	background-color: rgba(0,0,0,.3);
 	z-index: 50;
 }
-
+	.is-master .overlay {
+		border-bottom: 2px solid #000;
+	}
 
 .image {
 	top: 0;

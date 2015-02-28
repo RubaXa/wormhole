@@ -362,7 +362,7 @@
 
 	var store,
 		_storage,
-		_storageNS = '__wormhole.store__.',
+		_storageNS = '__wh.store__.',
 		_storageData = {}, // key => Object
 		_storageItems = {}, // key => String
 
@@ -377,7 +377,7 @@
 
 
 	function _isStoreKey(key) {
-		return (key !== _storageNS) && key.indexOf(_storageNS) === 0;
+		return key && (key !== _storageNS) && (key.indexOf(_storageNS) === 0);
 	}
 
 
@@ -483,6 +483,22 @@
 			}
 
 			return data;
+		},
+
+
+		/**
+		 * Пройтись по всем ключам
+		 * @param  {Function}  iterator
+		 */
+		each: function (iterator) {
+			if (_storage) {
+				for (var i = 0, n = _storage.length, key; i < n; i++) {
+					key = _storage.key(i);
+					if (_isStoreKey(key)) {
+						iterator(_storage.getItem(key), _getCleanedKey(key));
+					}
+				}
+			}
 		}
 	});
 
@@ -598,6 +614,22 @@
 
 				get: function (key) {
 					return _data[key];
+				},
+
+				remove: function (key) {
+					delete _data[key];
+				},
+
+				getAll: function () {
+					return _data;
+				},
+
+				each: function (iterator) {
+					for (var key in _data) {
+						if (_data.hasOwnProperty(key)) {
+							iterator(_data, key);
+						}
+					}
 				}
 			}),
 
@@ -815,10 +847,10 @@
 
 	
 
-	var MASTER_DELAY = 15 * 1000, // sec, сколько времени считать мастер живым
-		UPD_META_DELAY = 10 * 1000, // sec, как часто обновлять мата данные
-		PEERS_DELAY = 20 * 1000, // sec, сколько времени считать peer живым
-		QUEUE_WAIT = 5 * 1000, // sec, за какой период времени держать очередь событий
+	var UPD_META_DELAY = 5 * 1000, // ms, как часто обновлять мата данные
+		MASTER_DELAY = UPD_META_DELAY * 2, // ms, сколько времени считать мастер живым
+		PEERS_DELAY = UPD_META_DELAY * 4, // ms, сколько времени считать peer живым
+		QUEUE_WAIT = UPD_META_DELAY * 2, // ms, за какой период времени держать очередь событий
 
 		_emitterEmit = Emitter.fn.emit
 	;
@@ -828,7 +860,7 @@
 	 * Проверка наличия элемента в массиве
 	 * @param   {Array} array
 	 * @param   {*}     value
-	 * @returns {Boolean}
+	 * @returns {number}
 	 * @private
 	 */
 	function _inArray(array, value) {
@@ -836,11 +868,11 @@
 
 		while (i--) {
 			if (array[i] === value) {
-				return true;
+				return i;
 			}
 		}
 
-		return false;
+		return -1;
 	}
 
 
@@ -1213,121 +1245,130 @@
 		 * @private
 		 */
 		_initStorageTransport: function () {
-			var _this = this;
+			var _this = this, _pidMeta;
 
 			_this._idx = (_this._store('queue') || {}).idx || 0;
 
 
 			// Реакция на обновление storage
 			_this.__onStorage = function (key, data) {
-				if (key === _this._storeKey('queue')) {
+				if (key.indexOf('peer.') > -1) {
+					_this._updPeers();
+				}
+				else if (key === _this._storeKey('queue')) {
 					_this._processingQueue(data[key].items);
 				}
 				else if (key === _this._storeKey('meta')) {
-					_this._checkMeta();
+					_this._checkMetaDelayed();
 				}
 			};
 
 
-			// Обновить мета данные
-			_this.__updMeta = function () {
-//				console.log('__updMeta: ' + _this.id + ', ' + _this.destroyed);
-				_this._checkMeta(true);
-			};
+			_this._checkMetaDelayed = function (upd) {
+				 // Размазываем по времени проверку, а то много мастеров
+				var ms = (window.performance ? performance.now() : now()).toString().substr(-2)|0;
 
+				clearTimeout(_pidMeta);
+				_pidMeta = setTimeout(function () {
+					_this._checkMeta(upd);
+				}, ms > 50 ? 100 - ms : ms);
+			};
 
 			_this.store.on('change', _this.__onStorage);
 
-
-			// Разрыв для нормальной работы синхронной подписки на события
+			// Разрыв для нормальной работы синхронной подписки на события (из вне)
 			_this._pid = setTimeout(function () {
 				_this.emit = _this._storeEmit;
-				_this._pid = setInterval(_this.__updMeta, UPD_META_DELAY);
+
+				_this._pid = setInterval(function () {
+					_this._checkMeta(true);
+				}, UPD_META_DELAY);
+
 				_this.ready = true;
 
 				_emitterEmit.call(_this, 'ready', _this);
 
-				_this.__updMeta();
+				_this._checkMetaDelayed(true);
 				_this._processingQueue();
-			}, 1);
+				_this._updPeers();
+			}, 0);
 		},
 
 
 
 		/**
 		 * Проверка мета данных
-		 * @param  {Boolean}  [upd]
+		 * @param  {boolean}  [upd]
 		 * @private
 		 */
 		_checkMeta: function (upd) {
 			var ts = now(),
-				meta = this._store('meta') || { id: 0, ts: 0, peers: {} },
-				peers = meta.peers,
-				peersList = [],
+				meta = this._store('meta') || { id: 0, ts: 0 },
 				id = this.id,
 				emitMasterEvent = false
 			;
 
 
-			// Обновляем время текущего пира
-			peers[id] = ts;
-
-
-			// Считаем кол-во и собираем массив
-			for (id in peers) {
-				if ((ts - peers[id]) > PEERS_DELAY) {
-					delete peers[id];
-				}
-				else {
-					peersList.push(id);
-				}
-			}
-
-
-			// Обновляем список пиров
-			this._updPeers(peersList);
-
-
 			// Проверяем master: быть или не быть
 			/* istanbul ignore else */
-			if ((!meta.id || ts - meta.ts > MASTER_DELAY)) {
-				//console.log('check.master: ', id + ' <-> ' + meta.id, ' dt: ', ts - meta.ts, this.master);
+			if ((!meta.id || (ts - meta.ts) > MASTER_DELAY) || (meta.id == id && !this.master)) {
+				//console.log('check.master: ' + id + ' === ' + meta.id + '? delta: ' + (ts - meta.ts), this.master);
 
-				if (meta.id != id) {
-					//console.log('set.master:', id, ' dt: ', ts - meta.ts, [meta.id, ts, meta.ts]);
-					upd = true;
-					meta.id = id;
-					emitMasterEvent = true;
-					this.master = true;
-				}
-			}
-
-			if (this.master) {
-				meta.ts = ts;
+				upd = true;
+				meta.id = id;
+				emitMasterEvent = true;
+				this.master = true;
 			}
 
 			if (upd) {
-				this._store('meta', meta);
-				emitMasterEvent && _emitterEmit.call(this, 'master', this);
+				if (this.master) {
+					//console.log('master.upd: ' + this.id + ', delta: ' + (ts - meta.ts));
+
+					meta.ts = ts;
+					this._store('meta', meta);
+					emitMasterEvent && _emitterEmit.call(this, 'master', this);
+				}
+
+				this._store('peer.' + id, ts);
 			}
 		},
 
 
 		/**
 		 * Обновляем кол-во и список «дырок»
-		 * @param  {Array}  peers
+		 * @param  {string[]}  [peers]
 		 * @private
 		 */
 		_updPeers: function (peers) {
-			var id,
-				_peers = this._peers || [],
-				i = Math.max(peers.length, _peers.length),
-				changed = false;
+			var i,
+				id,
+				ts = now(),
+				_this = this,
+				_peers = _this._peers || [],
+				changed = false,
+				storeKey = this._storeKey('peer.');
 
+			if (!peers) {
+				peers = [];
+
+				// Находим все активные peer'ы
+				this.store.each(function (value, key) {
+					if (key.indexOf(storeKey) > -1) {
+						if ((ts - value) < PEERS_DELAY) {
+							peers.push(key.substr(storeKey.length));
+						}
+						else if (_this.master) {
+							_this.store.remove(key);
+						}
+					}
+				});
+			}
+
+			i = Math.max(peers.length, _peers.length);
 			while (i--) {
 				id = peers[i];
 
-				if (id && !_inArray(_peers, id)) {
+				if (id && _inArray(_peers, id) === -1) {
 					changed = true;
 					_emitterEmit.call(this, 'peers:add', id);
 				}
@@ -1335,7 +1376,7 @@
 				if (_peers[i] != id) {
 					id = _peers[i];
 
-					if (id && !_inArray(peers, id)) {
+					if (id && _inArray(peers, id) === -1) {
 						changed = true;
 						_emitterEmit.call(this, 'peers:remove', id);
 					}
@@ -1371,7 +1412,10 @@
 		_store: function (key, value) {
 			key = this._storeKey(key);
 
-			if (value === void 0) {
+			if (value === null) {
+				this.store.remove(key);
+			}
+			else if (value === void 0) {
 				value = this.store.get(key);
 			}
 			else {
@@ -1493,7 +1537,6 @@
 				this.destroyed = true;
 
 				clearTimeout(this._pid);
-				clearInterval(this._pid);
 
 				// Описываем все события
 				this.off();
@@ -1507,20 +1550,24 @@
 					this.worker = null;
 				}
 				else {
-					var meta = this._store('meta') || {};
+					this._store('peer.' + this.id, null);
 
 					/* istanbul ignore else */
 					if (this.master) {
-						// Если я мастер, удаляем инфу об этом
-						meta.ts = 0;
-						meta.id = 0;
+						// Если я мастер, удаляем инфу об этом или назначаем последний открытий таб
+						var meta = null,
+							_peers = this._peers || [];
+
+						// Удаляем себя
+						_peers.splice(_inArray(_peers, this.id), 1);
+
+						if (_peers.length > 0) {
+							meta = { id: _peers.pop(), ts: now() - MASTER_DELAY/1.5 };
+						}
+
+						this._store('meta', meta);
 //						console.log('master destroyed');
 					}
-
-					meta.peers = meta.peers || {};
-					delete meta.peers[this.id];
-
-					this._store('meta', meta);
 				}
 
 				this.master = false;
@@ -1545,7 +1592,7 @@
 
 
 	// Export
-	singletonHole.version = '0.6.1';
+	singletonHole.version = '0.7.0';
 	singletonHole.now = now;
 	singletonHole.uuid = uuid;
 	singletonHole.debounce = debounce;

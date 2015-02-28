@@ -9,11 +9,10 @@
 		ctx.imageNum = ctx.images[Math.random() * ctx.images.length | 0];
 
 
-		//console.log('hole:', hole.id);
-		//
-		//hole.on('master', function () {
-		//	console.log('I master');
-		//});
+		hole.on('master', function () {
+			window.console && console.log('I master');
+			document.title = '⬤ ' + document.title;
+		});
 
 
 		hole.on('choose', function (num) {
