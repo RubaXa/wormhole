@@ -8,7 +8,6 @@
 		ctx.images = [1, 2, 3, 4, 5];
 		ctx.imageNum = ctx.images[Math.random() * ctx.images.length | 0];
 
-
 		hole.on('master', function () {
 			window.console && console.log('I master');
 			document.title = '⬤ ' + document.title;

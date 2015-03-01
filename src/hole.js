@@ -287,12 +287,23 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 		 * @private
 		 */
 		_initStorage: function (callback) {
-			var match = this.url.toLowerCase().match(/^(https?:)?\/\/([^/]+)/);
+			var _store = store,
+				match = this.url.toLowerCase().match(/^(https?:)?\/\/([^/]+)/),
+				ready = function _wait() {
+					if (document.readyState === 'complete') {
+						callback(_store);
+					} else {
+						setTimeout(_wait, 100);
+					}
+				};
 
 			if (match && match[2] !== document.domain) {
-				return store.remote(this.url, callback);
+				return store.remote(this.url, function (store) {
+					_store = store;
+					ready();
+				});
 			} else {
-				callback(store);
+				ready();
 				return store;
 			}
 		},
@@ -397,7 +408,10 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 		 * @private
 		 */
 		_initStorageTransport: function () {
-			var _this = this, _pidMeta;
+			var _this = this,
+				_first = true,
+				id = _this.id,
+				_pidMeta;
 
 			_this._idx = (_this._store('queue') || {}).idx || 0;
 
@@ -405,7 +419,22 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 			// Реакция на обновление storage
 			_this.__onStorage = function (key, data) {
 				if (key.indexOf('peer.') > -1) {
+					//console.log('onPeer:', key, data[key]);
 					_this._updPeers();
+
+					clearTimeout(_pidMeta);
+					if (_first) {
+						_first = false;
+
+						// Размазываем проверку по времени
+						_pidMeta = setTimeout(_this._checkMetaDelayed, 500);
+
+						// Только сейчас запускаем проверку обновления meta и peer
+						_this._pid = setInterval(function () {
+							_this._checkMeta(true);
+							_this._store('peer.' + id, now());
+						}, UPD_META_DELAY);
+					}
 				}
 				else if (key === _this._storeKey('queue')) {
 					_this._processingQueue(data[key].items);
@@ -417,32 +446,22 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 
 
 			_this._checkMetaDelayed = function (upd) {
-				 // Размазываем по времени проверку, а то много мастеров
-				var ms = (window.performance ? performance.now() : now()).toString().substr(-2)|0;
-
-				clearTimeout(_pidMeta);
-				_pidMeta = setTimeout(function () {
-					_this._checkMeta(upd);
-				}, ms > 50 ? 100 - ms : ms);
+				//console.log('_checkMetaDelayed:', now());
+				_this._checkMeta(upd);
 			};
+
 
 			_this.store.on('change', _this.__onStorage);
 
 			// Разрыв для нормальной работы синхронной подписки на события (из вне)
 			_this._pid = setTimeout(function () {
 				_this.emit = _this._storeEmit;
-
-				_this._pid = setInterval(function () {
-					_this._checkMeta(true);
-				}, UPD_META_DELAY);
-
 				_this.ready = true;
 
 				_emitterEmit.call(_this, 'ready', _this);
 
-				_this._checkMetaDelayed(true);
+				_this._store('peer.' + id, now());
 				_this._processingQueue();
-				_this._updPeers();
 			}, 0);
 		},
 
@@ -480,9 +499,32 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 					this._store('meta', meta);
 					emitMasterEvent && _emitterEmit.call(this, 'master', this);
 				}
-
-				this._store('peer.' + id, ts);
 			}
+		},
+
+
+		/**
+		 * Получить все активные «дыкрки»
+		 * @return {Array}
+		 */
+		getPeers: function (withoutId) {
+			var ts = now(),
+				_this = this,
+				peers = [],
+				storeKey = _this._storeKey('peer.');
+
+			_this.store.each(function (value, key) {
+				if (key.indexOf(storeKey) > -1) {
+					if ((ts - value) < PEERS_DELAY) {
+						peers.push(key.substr(storeKey.length));
+					}
+					else if (_this.master) {
+						_this.store.remove(key);
+					}
+				}
+			});
+
+			return peers;
 		},
 
 
@@ -497,23 +539,10 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 				ts = now(),
 				_this = this,
 				_peers = _this._peers || [],
-				changed = false,
-				storeKey = this._storeKey('peer.');
+				changed = false;
 
 			if (!peers) {
-				peers = [];
-
-				// Находим все активные peer'ы
-				this.store.each(function (value, key) {
-					if (key.indexOf(storeKey) > -1) {
-						if ((ts - value) < PEERS_DELAY) {
-							peers.push(key.substr(storeKey.length));
-						}
-						else if (_this.master) {
-							_this.store.remove(key);
-						}
-					}
-				});
+				peers = this.getPeers();
 			}
 
 			i = Math.max(peers.length, _peers.length);
@@ -708,13 +737,13 @@ define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now,
 					if (this.master) {
 						// Если я мастер, удаляем инфу об этом или назначаем последний открытий таб
 						var meta = null,
-							_peers = this._peers || [];
+							nextId = this.getPeers().pop();
 
-						// Удаляем себя
-						_peers.splice(_inArray(_peers, this.id), 1);
-
-						if (_peers.length > 0) {
-							meta = { id: _peers.pop(), ts: now() - MASTER_DELAY/1.5 };
+						if (nextId) {
+							meta = {
+								id: nextId,
+								ts: this._store('peer.' + nextId)
+							};
 						}
 
 						this._store('meta', meta);
