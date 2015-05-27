@@ -200,6 +200,29 @@ obj.emit("foo", [1, 2, 3]); // [1, 2, 3]
 ---
 
 
+#### wormhole.cors
+Wrapper for `postMessage`.
+
+```js
+// Main-frame
+wormhole.cors.on("data", function (data) {
+	// ...
+});
+
+wormhole.cors["some:command"] = function (value) {
+	return value * 2;
+};
+
+// IFrame
+wormhole.cors(parent).send({foo: "bar"});
+wormhole.cors(parent).call("some:command", 3, function (err, result) {
+	console.log(result);
+});
+```
+
+---
+
+
 #### wormhole.store
 Interface for `localStorage`.
 
