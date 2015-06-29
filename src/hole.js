@@ -1,4 +1,4 @@
-define(["now", "uuid", "debounce", "emitter", "store", "worker"], function (now, uuid, debounce, Emitter, store, Worker) {
+define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker"], function (now, uuid, debounce, Emitter, store, Worker) {
 	var UPD_META_DELAY = 5 * 1000, // ms, как часто обновлять мата данные
 		MASTER_DELAY = UPD_META_DELAY * 2, // ms, сколько времени считать мастер живым
 		PEERS_DELAY = UPD_META_DELAY * 4, // ms, сколько времени считать peer живым

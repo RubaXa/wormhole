@@ -1,4 +1,4 @@
-define(["emitter"], function (Emitter) {
+define(["./emitter"], function (Emitter) {
 	var _corsId = 1,
 		_corsExpando = '__cors__',
 		_corsCallback = {},
