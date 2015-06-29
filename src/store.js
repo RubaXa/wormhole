@@ -1,4 +1,4 @@
-define(["emitter", "cors"], function (Emitter, cors) {
+define(["./emitter", "./cors"], function (Emitter, cors) {
 	var store,
 		_storage,
 		_storageNS = '__wh.store__.',

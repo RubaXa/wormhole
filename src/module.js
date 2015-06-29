@@ -1,4 +1,4 @@
-define(["now", "uuid", "debounce", "cors", "emitter", "store", "worker", "hole"], function (now, uuid, debounce, cors, Emitter, store, Worker, Hole) {
+define(["./now", "./uuid", "./debounce", "./cors", "./emitter", "./store", "./worker", "./hole"], function (now, uuid, debounce, cors, Emitter, store, Worker, Hole) {
 	var singletonHole = function () {
 		/* istanbul ignore else */
 		if (!singletonHole.instance) {
