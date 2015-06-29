@@ -28,5 +28,8 @@
 		"sharedworker"
 	],
 	"author": "Konstantin Lebedev <ibnRubaXa@gmail.com>",
-	"license": "MIT"
+	"license": "MIT",
+	"jam": {
+		"main": "wormhole"
+	}
 }
