@@ -83,7 +83,7 @@ define(["./emitter"], function (Emitter) {
 			func;
 
 		/* istanbul ignore else */
-		if (data.indexOf(_corsExpando) === 0) {
+		if (typeof data === 'string' && data.indexOf(_corsExpando) === 0) {
 			// Наше сообщение
 			try {
 				// Парсим данные

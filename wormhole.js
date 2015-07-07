@@ -297,7 +297,7 @@
 			func;
 
 		/* istanbul ignore else */
-		if (data.indexOf(_corsExpando) === 0) {
+		if (typeof data === 'string' && data.indexOf(_corsExpando) === 0) {
 			// Наше сообщение
 			try {
 				// Парсим данные
@@ -1621,7 +1621,7 @@
 
 
 	// Export
-	singletonHole.version = '0.7.0';
+	singletonHole.version = '0.7.1';
 	singletonHole.now = now;
 	singletonHole.uuid = uuid;
 	singletonHole.debounce = debounce;

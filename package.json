@@ -1,6 +1,6 @@
 {
 	"name": "wormhole.js",
-	"version": "0.7.0",
+	"version": "0.7.1",
 	"devDependencies": {
 		"grunt": "0.4.5",
 		"grunt-qunit-istanbul": "0.4.5",
