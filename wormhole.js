@@ -213,13 +213,18 @@
 
 	
 
+	function getOwn(obj, prop) {
+		return !(prop in getOwn) && obj && obj.hasOwnProperty(prop) ? obj[prop] : null;
+	}
+
+	
+
 	var _corsId = 1,
 		_corsExpando = '__cors__',
 		_corsCallback = {},
 		_parseJSON = JSON.parse,
 		_stringifyJSON = JSON.stringify
 	;
-
 
 
 	/**
@@ -319,7 +324,7 @@
 						resp[_corsExpando] = id;
 
 						try {
-							func = cors[data.cmd];
+							func = getOwn(cors, data.cmd);
 
 							if (func) {
 								resp.result = func(data.data, source);
@@ -883,7 +888,7 @@
 	 * @private
 	 */
 	function _execCmd(hole, cmd) {
-		var fn = hole[cmd.name];
+		var fn = getOwn(hole, cmd.name);
 		var next = function (err, result) {
 			cmd.error = err;
 			cmd.result = result;
@@ -920,16 +925,11 @@
 	 * @param   {Boolean} [useStore]  использовать store
 	 */
 	function Hole(url, useStore) {
-		var _this = this,
-			_destroy = /* istanbul ignore next */ function () {
-				if (window.addEventListener) {
-					window.removeEventListener('unload', _destroy);
-				} else {
-					window.detachEvent('onunload', _destroy);
-				}
+		var _this = this;
 
-				_this.destroy();
-			};
+		_this._destroyUnload = /* istanbul ignore next */ function () {
+			_this.destroy();
+		};
 
 
 		/**
@@ -1052,9 +1052,9 @@
 
 		/* istanbul ignore next */
 		if (window.addEventListener) {
-			window.addEventListener('unload', _destroy);
+			window.addEventListener('unload', _this._destroyUnload);
 		} else {
-			window.attachEvent('onunload', _destroy);
+			window.attachEvent('onunload', _this._destroyUnload);
 		}
 	}
 
@@ -1562,8 +1562,15 @@
 		 */
 		destroy: function () {
 			if (!this.destroyed) {
+				if (window.addEventListener) {
+					window.removeEventListener('unload', this._destroyUnload);
+				} else {
+					window.detachEvent('onunload', this._destroyUnload);
+				}
+
 				this.ready = false;
 				this.destroyed = true;
+				this._destroyUnload = null;
 
 				clearTimeout(this._pid);
 
@@ -1621,7 +1628,7 @@
 
 
 	// Export
-	singletonHole.version = '0.7.1';
+	singletonHole.version = '0.7.2';
 	singletonHole.now = now;
 	singletonHole.uuid = uuid;
 	singletonHole.debounce = debounce;

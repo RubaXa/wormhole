@@ -1,4 +1,4 @@
-define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker"], function (now, uuid, debounce, Emitter, store, Worker) {
+define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker", "./get-own"], function (now, uuid, debounce, Emitter, store, Worker, getOwn) {
 	var UPD_META_DELAY = 5 * 1000, // ms, как часто обновлять мата данные
 		MASTER_DELAY = UPD_META_DELAY * 2, // ms, сколько времени считать мастер живым
 		PEERS_DELAY = UPD_META_DELAY * 4, // ms, сколько времени считать peer живым
@@ -35,7 +35,7 @@ define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker"], fu
 	 * @private
 	 */
 	function _execCmd(hole, cmd) {
-		var fn = hole[cmd.name];
+		var fn = getOwn(hole, cmd.name);
 		var next = function (err, result) {
 			cmd.error = err;
 			cmd.result = result;
@@ -72,16 +72,11 @@ define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker"], fu
 	 * @param   {Boolean} [useStore]  использовать store
 	 */
 	function Hole(url, useStore) {
-		var _this = this,
-			_destroy = /* istanbul ignore next */ function () {
-				if (window.addEventListener) {
-					window.removeEventListener('unload', _destroy);
-				} else {
-					window.detachEvent('onunload', _destroy);
-				}
+		var _this = this;
 
-				_this.destroy();
-			};
+		_this._destroyUnload = /* istanbul ignore next */ function () {
+			_this.destroy();
+		};
 
 
 		/**
@@ -204,9 +199,9 @@ define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker"], fu
 
 		/* istanbul ignore next */
 		if (window.addEventListener) {
-			window.addEventListener('unload', _destroy);
+			window.addEventListener('unload', _this._destroyUnload);
 		} else {
-			window.attachEvent('onunload', _destroy);
+			window.attachEvent('onunload', _this._destroyUnload);
 		}
 	}
 
@@ -714,8 +709,15 @@ define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker"], fu
 		 */
 		destroy: function () {
 			if (!this.destroyed) {
+				if (window.addEventListener) {
+					window.removeEventListener('unload', this._destroyUnload);
+				} else {
+					window.detachEvent('onunload', this._destroyUnload);
+				}
+
 				this.ready = false;
 				this.destroyed = true;
+				this._destroyUnload = null;
 
 				clearTimeout(this._pid);
 

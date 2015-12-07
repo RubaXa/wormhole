@@ -1,11 +1,10 @@
-define(["./emitter"], function (Emitter) {
+define(["./emitter", "./get-own"], function (Emitter, getOwn) {
 	var _corsId = 1,
 		_corsExpando = '__cors__',
 		_corsCallback = {},
 		_parseJSON = JSON.parse,
 		_stringifyJSON = JSON.stringify
 	;
-
 
 
 	/**
@@ -105,7 +104,7 @@ define(["./emitter"], function (Emitter) {
 						resp[_corsExpando] = id;
 
 						try {
-							func = cors[data.cmd];
+							func = getOwn(cors, data.cmd);
 
 							if (func) {
 								resp.result = func(data.data, source);
