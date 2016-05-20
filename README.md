@@ -259,7 +259,7 @@ standardized by the Open Software Foundation (OSF) as part of the Distributed Co
 Not enabled by default, but:
 
 ```html
-<script>window. wormhole = {workers: true};</script>
+<script>window.wormhole = {workers: true};</script>
 <script src="/vendor/wormhole.js"></script>
 ```
 
