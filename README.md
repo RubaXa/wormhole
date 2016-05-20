@@ -4,7 +4,7 @@ Is EventEmitter for communication between tabs.
 
 ### Features
  * Cross-domain communication
- * SharedWorkers or fallback to localStorage
+ * [SharedWorker](#sw) or fallback to localStorage
  * IE 8+, Chrome 10+, FireFox 10+, Opera 10+, Safari 6+
  * Test coverage ([run](http://rubaxa.github.io/wormhole/tests/))
 
@@ -251,6 +251,17 @@ A universally unique identifier (UUID) is an identifier standard used in softwar
 standardized by the Open Software Foundation (OSF) as part of the Distributed Computing Environment (DCE)
 (c) [wiki](https://en.wikipedia.org/wiki/Universally_unique_identifier).
 
+
+---
+
+<a name="sw"></a>
+### SharedWorker
+Not enabled by default, but:
+
+```html
+<script>window. wormhole = {workers: true};</script>
+<script src="/vendor/wormhole.js"></script>
+```
 
 ---
 
