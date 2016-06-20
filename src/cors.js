@@ -3,7 +3,8 @@ define(["./emitter", "./get-own"], function (Emitter, getOwn) {
 		_corsExpando = '__cors__',
 		_corsCallback = {},
 		_parseJSON = JSON.parse,
-		_stringifyJSON = JSON.stringify
+		_stringifyJSON = JSON.stringify,
+		_allowAccess = void 0
 	;
 
 
@@ -63,9 +64,38 @@ define(["./emitter", "./get-own"], function (Emitter, getOwn) {
 				window.postMessage(_corsExpando + _stringifyJSON(data), '*');
 			}
 			catch (err) {}
+		},
+		/**
+		 * Разрешение для конкретного `origin`
+		 * @param {*} origin
+		 */
+		allowAccess: function (origin) {
+			if (typeof origin === 'string' || origin instanceof RegExp) {
+				_allowAccess = origin;
+			}
 		}
 	};
 
+
+
+	
+
+	/**
+	 * Проверка на соответствие `targetOrigin`
+	 * @param {*} targetOrigin
+	 * @private
+	 */
+	function _checkAccess(targetOrigin) {
+		if (_allowAccess == void 0) {
+			return true;
+		} else if (_allowAccess instanceof RegExp) {
+			return _allowAccess.test(targetOrigin);
+		} else if (typeof _allowAccess === 'string') {
+			return targetOrigin === _allowAccess;
+		}
+
+		return false;
+	}
 
 	/**
 	 * Получение `postMessage`
@@ -73,16 +103,18 @@ define(["./emitter", "./get-own"], function (Emitter, getOwn) {
 	 * @private
 	 */
 	function _onmessage(evt) {
-		evt = evt || /* istanbul ignore next */ window.event;
-
-		var id,
+		var origin,
+			id,
 			resp = {},
 			data = evt.data,
 			source = evt.source,
 			func;
 
+		evt = evt || /* istanbul ignore next */ window.event;
+		origin = evt.origin || evt.originalEvent.origin;
+
 		/* istanbul ignore else */
-		if (typeof data === 'string' && data.indexOf(_corsExpando) === 0) {
+		if (typeof data === 'string' && data.indexOf(_corsExpando) === 0 && _checkAccess(origin)) {
 			// Наше сообщение
 			try {
 				// Парсим данные
