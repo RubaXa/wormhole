@@ -73,6 +73,15 @@ define(["./emitter", "./get-own"], function (Emitter, getOwn) {
 			if (typeof origin === 'string' || origin instanceof RegExp) {
 				_allowAccess = origin;
 			}
+		},
+		/**
+		 * Установка кастомного префикса `expando`
+		 * @param {String} expando
+		 */
+		setExpando: function (expando) {
+			if (typeof expando === 'string') {
+				_corsExpando = expando;
+			}
 		}
 	};
 
