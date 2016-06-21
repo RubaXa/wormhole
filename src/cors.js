@@ -64,24 +64,26 @@ define(["./emitter", "./get-own"], function (Emitter, getOwn) {
 				window.postMessage(_corsExpando + _stringifyJSON(data), '*');
 			}
 			catch (err) {}
-		},
-		/**
-		 * Разрешение для конкретного `origin`
-		 * @param {*} origin
-		 */
-		allowAccess: function (origin) {
-			if (typeof origin === 'string' || origin instanceof RegExp) {
-				_allowAccess = origin;
-			}
-		},
-		/**
-		 * Установка кастомного префикса `expando`
-		 * @param {String} expando
-		 */
-		setExpando: function (expando) {
-			if (typeof expando === 'string') {
-				_corsExpando = expando;
-			}
+		}
+	};
+
+	/**
+	 * Разрешение для конкретного `origin`
+	 * @param {*} origin
+	 */
+	cors.allowAccess = function (origin) {
+		if (typeof origin === 'string' || origin instanceof RegExp) {
+			_allowAccess = origin;
+		}
+	};
+
+	/**
+	 * Установка кастомного префикса `expando`
+	 * @param {String} expando
+	 */
+	cors.setExpando = function (expando) {
+		if (typeof expando === 'string') {
+			_corsExpando = expando;
 		}
 	};
 
