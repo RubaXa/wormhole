@@ -136,7 +136,7 @@ $.getData("/path/to/api").then(function (result) {
 ### Peers
 
 ```js
-womrhole()
+wormhole()
 	.on("peers", function (peers) {
 		console.log("ids:", peers); // ["tab-id-1", "tab-id-2", ..]
 	})
@@ -184,7 +184,7 @@ Micro event emitter.
  * emit(type:`String`[, args:`*|Array`]):`this`
 
 ```js
-var obj = womrhole.Emitter.apply({}); // or new womrhole.Emitter();
+var obj = wormhole.Emitter.apply({}); // or new wormhole.Emitter();
 
 obj.on("foo", function () {
   console.log(arguments);
