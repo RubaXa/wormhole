@@ -9,11 +9,13 @@ define(["./now", "./uuid", "./debounce", "./cors", "./emitter", "./store", "./wo
 	};
 
 
-	Worker.support &= (window.wormhole && wormhole.workers);
+	if (window.wormhole && window.wormhole.workers === false) {
+		Worker.support = false;
+	}
 
 
 	// Export
-	singletonHole.version = '0.7.2';
+	singletonHole.version = '0.9.0';
 	singletonHole.now = now;
 	singletonHole.uuid = uuid;
 	singletonHole.debounce = debounce;

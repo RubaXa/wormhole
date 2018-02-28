@@ -1,8 +1,9 @@
 define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker", "./get-own"], function (now, uuid, debounce, Emitter, store, Worker, getOwn) {
-	var UPD_META_DELAY = 5 * 1000, // ms, как часто обновлять мата данные
-		MASTER_DELAY = UPD_META_DELAY * 2, // ms, сколько времени считать мастер живым
-		PEERS_DELAY = UPD_META_DELAY * 4, // ms, сколько времени считать peer живым
-		QUEUE_WAIT = UPD_META_DELAY * 2, // ms, за какой период времени держать очередь событий
+	var PEER_UPD_DELAY = 5 * 1000, // ms, как часто обновлять данные j gbht
+		MASTER_VOTE_DELAY = 500, // ms, сколько времени считать мастер живым
+		MASTER_DELAY = PEER_UPD_DELAY * 2, // ms, сколько времени считать мастер живым
+		PEERS_DELAY = PEER_UPD_DELAY * 4, // ms, сколько времени считать peer живым
+		QUEUE_WAIT = PEER_UPD_DELAY * 2, // ms, за какой период времени держать очередь событий
 
 		_emitterEmit = Emitter.fn.emit
 	;
@@ -282,24 +283,12 @@ define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker", "./
 		 * @private
 		 */
 		_initStorage: function (callback) {
-			var _store = store,
-				match = this.url.toLowerCase().match(/^(https?:)?\/\/([^/]+)/),
-				ready = function _wait() {
-					if (document.readyState === 'complete') {
-						callback(_store);
-					} else {
-						setTimeout(_wait, 100);
-					}
-				};
+			var match = this.url.toLowerCase().match(/^(https?:)?\/\/([^/]+)/);;
 
 			if (match && match[2] !== document.domain) {
-				return store.remote(this.url, function (store) {
-					_store = store;
-					ready();
-				});
+				store.remote(this.url, callback);
 			} else {
-				ready();
-				return store;
+				callback(store);
 			}
 		},
 
@@ -405,46 +394,40 @@ define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker", "./
 		_initStorageTransport: function () {
 			var _this = this,
 				_first = true,
-				id = _this.id,
-				_pidMeta;
+				id = _this.id;
 
 			_this._idx = (_this._store('queue') || {}).idx || 0;
 
+			// Запускаем проверку обновления данных peer'а
+			_this._updPeer = function () {
+				_this._store('peer.' + id, {
+					id: id,
+					ts: now(),
+					master: _this.master,
+				});
+
+				clearTimeout(_this._pid);
+				_this._pid = setTimeout(_this._updPeer, PEER_UPD_DELAY);
+			};
 
 			// Реакция на обновление storage
 			_this.__onStorage = function (key, data) {
 				if (key.indexOf('peer.') > -1) {
 					//console.log('onPeer:', key, data[key]);
-					_this._updPeers();
+					_this._checkPeers();
 
-					clearTimeout(_pidMeta);
-					if (_first) {
-						_first = false;
-
-						// Размазываем проверку по времени
-						_pidMeta = setTimeout(_this._checkMetaDelayed, 500);
-
-						// Только сейчас запускаем проверку обновления meta и peer
-						_this._pid = setInterval(function () {
-							_this._checkMeta(true);
-							_this._store('peer.' + id, now());
-						}, UPD_META_DELAY);
-					}
+					// Размазываем проверку по времени
+					clearTimeout(_this._pidMaster);
+					_this._pidMaster = setTimeout(_this._checkMasterDelayed, MASTER_VOTE_DELAY);
 				}
 				else if (key === _this._storeKey('queue')) {
 					_this._processingQueue(data[key].items);
 				}
-				else if (key === _this._storeKey('meta')) {
-					_this._checkMetaDelayed();
-				}
 			};
 
-
-			_this._checkMetaDelayed = function (upd) {
-				//console.log('_checkMetaDelayed:', now());
-				_this._checkMeta(upd);
+			_this._checkMasterDelayed = function () {
+				_this._checkMaster();
 			};
-
 
 			_this.store.on('change', _this.__onStorage);
 
@@ -455,7 +438,7 @@ define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker", "./
 
 				_emitterEmit.call(_this, 'ready', _this);
 
-				_this._store('peer.' + id, now());
+				_this._updPeer();
 				_this._processingQueue();
 			}, 0);
 		},
@@ -463,36 +446,27 @@ define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker", "./
 
 
 		/**
-		 * Проверка мета данных
-		 * @param  {boolean}  [upd]
+		 * Проверка и выбор мастера
 		 * @private
 		 */
-		_checkMeta: function (upd) {
-			var ts = now(),
-				meta = this._store('meta') || { id: 0, ts: 0 },
-				id = this.id,
-				emitMasterEvent = false
-			;
+		_checkMaster: function () {
+			var peers = this.getPeers(true);
 
+			if (peers.length > 0) {
+				var mpeer = peers[0];
 
-			// Проверяем master: быть или не быть
-			/* istanbul ignore else */
-			if ((!meta.id || (ts - meta.ts) > MASTER_DELAY) || (meta.id == id && !this.master)) {
-				//console.log('check.master: ' + id + ' === ' + meta.id + '? delta: ' + (ts - meta.ts), this.master);
+				if (!mpeer.master || (now() - mpeer.ts) > MASTER_DELAY) {
+					peers.forEach(function (p) {
+						if (mpeer.ts < p.ts) {
+							mpeer = p;
+						}
+					});
 
-				upd = true;
-				meta.id = id;
-				emitMasterEvent = true;
-				this.master = true;
-			}
-
-			if (upd) {
-				if (this.master) {
-					//console.log('master.upd: ' + this.id + ', delta: ' + (ts - meta.ts));
-
-					meta.ts = ts;
-					this._store('meta', meta);
-					emitMasterEvent && _emitterEmit.call(this, 'master', this);
+					if (mpeer.id === this.id) {
+						this.master = true;
+						this._updPeer();
+						_emitterEmit.call(this, 'master', this);
+					}
 				}
 			}
 		},
@@ -500,18 +474,23 @@ define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker", "./
 
 		/**
 		 * Получить все активные «дыкрки»
+		 * @param  {boolean} [raw]
 		 * @return {Array}
 		 */
-		getPeers: function (withoutId) {
+		getPeers: function (raw) {
 			var ts = now(),
 				_this = this,
 				peers = [],
 				storeKey = _this._storeKey('peer.');
 
-			_this.store.each(function (value, key) {
+			_this.store.each(function (data, key) {
 				if (key.indexOf(storeKey) > -1) {
-					if ((ts - value) < PEERS_DELAY) {
-						peers.push(key.substr(storeKey.length));
+					if ((ts - data.ts) < PEERS_DELAY) {
+						if (raw) {
+							peers[data.master ? 'unshift' : 'push'](data);
+						} else {
+							peers.push(data.id);
+						}
 					}
 					else if (_this.master) {
 						_this.store.remove(key);
@@ -528,7 +507,7 @@ define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker", "./
 		 * @param  {string[]}  [peers]
 		 * @private
 		 */
-		_updPeers: function (peers) {
+		_checkPeers: function (peers) {
 			var i,
 				id,
 				ts = now(),
@@ -734,23 +713,6 @@ define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker", "./
 				}
 				else {
 					this._store('peer.' + this.id, null);
-
-					/* istanbul ignore else */
-					if (this.master) {
-						// Если я мастер, удаляем инфу об этом или назначаем последний открытий таб
-						var meta = null,
-							nextId = this.getPeers().pop();
-
-						if (nextId) {
-							meta = {
-								id: nextId,
-								ts: this._store('peer.' + nextId)
-							};
-						}
-
-						this._store('meta', meta);
-//						console.log('master destroyed');
-					}
 				}
 
 				this.master = false;

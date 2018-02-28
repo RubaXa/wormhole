@@ -88,7 +88,7 @@ define([], function () {
 
 
 				// Опришиваем и ищем зомби
-				setInterval(function () {
+				setTimeout(function next() {
 					var i = ports.length, port;
 
 					while (i--) {
@@ -105,7 +105,8 @@ define([], function () {
 					}
 
 					checkMaster();
-				}, 1000);
+					setTimeout(next, 500);
+				}, 500);
 
 
 				window.addEventListener('connect', function (evt) {

@@ -134,7 +134,7 @@ define(["./emitter", "./cors"], function (Emitter, cors) {
 				for (var i = 0, n = _storage.length, key; i < n; i++) {
 					key = _storage.key(i);
 					if (_isStoreKey(key)) {
-						iterator(_storage.getItem(key), _getCleanedKey(key));
+						iterator(_parseJSON(_storage.getItem(key)), _getCleanedKey(key));
 					}
 				}
 			}
