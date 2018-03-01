@@ -232,17 +232,20 @@ Wrapper for `postMessage`.
 ```js
 import {cors} from 'wormhole.js';
 
-// Main-frame
+// Main-document
 cors.on('data', (data) => {
-	// ...
+	console.log('Received:', data);
 });
 
 cors['some:command'] = (value) => value * 2;
 
 // IFrame
 cors(parent).send({foo: 'bar'});
+// [main-document] "Received:" {foo: 'bar'}
+
 cors(parent).call('some:command', 3, (err, result) => {
-	console.log('Error:', err, ', Result:', result);
+	console.log('Error:', err, 'Result:', result);
+	// [iframe] "Error:" null "Result:" 6
 });
 ```
 
