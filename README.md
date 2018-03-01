@@ -200,6 +200,14 @@ wormhole().call('foo', [1, 2, 3], (err, results) => {
 
 ### Modules
 
+ - [Emitter](#m-emitter) — Micro event emitter
+ - [cors](#m-cors) — Handy wrapper over `postMessage`.
+ - [store](#m-store) — Safe and a handy wrapper over `localStorage`.
+
+
+---
+
+<a name="m-emitter"></a>
 
 #### wormhole.Emitter
 Micro event emitter.
@@ -225,9 +233,10 @@ obj.emit('foo', [1, 2, 3]); // [1, 2, 3]
 
 ---
 
+<a name="m-cors"></a>
 
 #### wormhole.cors
-Wrapper for `postMessage`.
+Handy wrapper over `postMessage`.
 
 ```js
 import {cors} from 'wormhole.js';
@@ -252,9 +261,10 @@ cors(parent).call('some:command', 3, (err, result) => {
 
 ---
 
+<a name="m-store"></a>
 
 #### wormhole.store
-Interface for `localStorage`.
+Safe and a handy wrapper over `localStorage`.
 
  - **get**(key:`String`):`*`
  - **set**(key:`String`, value:`*`)
@@ -283,7 +293,16 @@ store.set('prop', {qux: 'ok'});
 
 ---
 
+
 ### Utils
+
+ - [uuid](#uuid)
+ - [debounce](#debounce)
+
+
+---
+
+<a name="uuid"></a>
 
 ##### wormhole.uuid():`String`
 A universally unique identifier (UUID) is an identifier standard used in software construction,
@@ -293,6 +312,7 @@ standardized by the Open Software Foundation (OSF) as part of the Distributed Co
 
 ---
 
+<a name="debounce"></a>
 
 ##### wormhole.debounce(fn:`Function`, delay:`Number`[, immediate:`Boolean`]):`Function`
 
