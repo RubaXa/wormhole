@@ -21,8 +21,10 @@ npm i --save-dev wormhole.js
 ### Basic example
 
 ```js
+import wormhole from 'wormhole.js'; // yes, with ".js", it's not mistake
+
 // All tabs
-wormhole().on('coords', function (x, y) {
+wormhole().on('coords', (x, y) => {
 	console.log(x, y);
 });
 
@@ -34,7 +36,7 @@ if (wormhole().master) {
 	// ..
 }
 
-wormhole().on('master', function () {
+wormhole().on('master', () => {
 	console.log('Wow!');
 });
 ```
@@ -78,22 +80,23 @@ socket.send({foo: 'bar'})
 ### CORS example
 
  1. Create a subdomain, ex.: `http://wormhole.youdomain.com/`;
- 2. Copy-paste [universal.html](universal.html) into root;
+ 2. Copy-paste [universal.html](./universal.html) and [wormhole.js](./wormhole.js) into root;
  3. Check access `http://wormhole.youdomain.com/universal.html`;
- 4. Profit.
-
+ 4. Profit:
 
 ```js
 // http://foo.youdomain.com/
-var hole = new wormhole.Universal('http://wormhole.youdomain.com/universal.html');
+import {Universal} from 'wormhole.js';
+const hole = new Universal('http://wormhole.youdomain.com/universal.html');
 
-hole.on('data', function (data) {
+hole.on('data', (data) => {
 	console.log(data);
 });
 
 
 // http://bar.youdomain.com/
-var hole = new wormhole.Universal('http://wormhole.youdomain.com/universal.html');
+import {Universal} from 'wormhole.js';
+const hole = new Universal('http://wormhole.youdomain.com/universal.html');
 
 hole.emit('data', 'any data');
 ```
@@ -107,70 +110,45 @@ hole.emit('data', 'any data');
 ### Master/slave example
 
 ```js
-// All tabs
-(function ($) {
-	var _cache = {},
-		_getCacheKey = function (req) {
-			return req.url + JSON.stringify(req.data);
-		}
-	;
+import wormhole from 'wormhole.js';
 
-
-	// Define remote command (master)
-	wormhole()['get-data'] = function (req, callback) {
-		var key = _getCacheKey(req),
-			promise = _cache[key];
-
-		if (!promise) {
-			_cache[key] = promise = $.get(req.url, req.data);
+// All tabs (main.js)
+// Define remote command (master)
+wormhole()['get-data'] = (function (_cache) {
+	return function getData(req, callback) {
+		if (!_cache.hasOwnProperty(req.url)) {
+			_cache[req.url] = fetch(req.url).then(res => res.json());
 		}
 
-		return promise
-			.done(function (result) {
-				callback(null, result);
-			})
-			.fail(function (err) {
-				delete _cache[key];
-				callback(err);
-			})
-		;
+		return _cache[key];
 	};
+})({});
 
-
-	// Get remote data
-	$.getData = function (url, data) {
-		var dfd = $.Deferred();
-
+// Get remote data method
+function getData(url) {
+	return new Promise((resolve, reject) => {
 		// Calling command on master (from slave... or the master, is not important)
-		wormhole().call('get-data', { url: url, data: data }, function (err, data) {
-			if (err) {
-				dfd.reject(err);
-			} else {
-				dfd.resolve(data);
-			}
-		});
-
-		return dfd.promise();
-	};
-
-
-	// I'm master!
-	wormhole().on('master', function () {
-		// some code
+		wormhole().call(
+			'get-data', // command
+			{url}, // arguments
+			(err, json) => err ? reject(err) : resolve(json) // callback(err, result)
+		);
 	});
-})(jQuery);
+};
 
-
+// I'm master!
+wormhole().on('master', () => {
+	// some code
+});
 
 // Tab #X
-$.getData('/path/to/api').then(function (result) {
+getData('/path/to/api').then((json) => {
 	// Send ajax request
 	console.log(result);
 });
 
-
 // Tab #Y
-$.getData('/path/to/api').then(function (result) {
+getData('/path/to/api').then((result) => {
 	// From master cache
 	console.log(result);
 });
@@ -184,13 +162,13 @@ $.getData('/path/to/api').then(function (result) {
 
 ```js
 wormhole()
-	.on('peers', function (peers) {
+	.on('peers', (peers) => {
 		console.log('ids:', peers); // ['tab-id-1', 'tab-id-2', ..]
 	})
-	.on('peers:add', function (id) {
+	.on('peers:add', (id) => {
 		// ..
 	})
-	.on('peers:remove', function (id) {
+	.on('peers:remove', (id) => {
 		// ..
 	})
 ;
@@ -204,14 +182,14 @@ wormhole()
 
 ```js
 // Register command (all tabs)
-wormhole()['foo'] = function (data, next) {
+wormhole()['foo'] = (data, next) => {
 	// bla-bla-bla
 	next(null, data.reverse()); // or `next('error')`
 };
 
 
 // Calling the command (some tab)
-wormhole().call('foo', [1, 2, 3], function (err, results) {
+wormhole().call('foo', [1, 2, 3], (err, results) => {
 	console.log(results); // [3, 2, 1]
 })
 ```
@@ -226,17 +204,18 @@ wormhole().call('foo', [1, 2, 3], function (err, results) {
 #### wormhole.Emitter
 Micro event emitter.
 
- * on(type:`String`, fn:`Function`):`this`
- * off(type:`String`, fn:`Function`):`this`
- * emit(type:`String`[, args:`*|Array`]):`this`
+ - **on**(type:`String`, fn:`Function`):`this`
+ - **off**(type:`String`, fn:`Function`):`this`
+ - **emit**(type:`String`[, args:`*|Array`]):`this`
 
 ```js
-var obj = wormhole.Emitter.apply({}); // or new wormhole.Emitter();
+import {Emitter} from 'wormhole.js';
 
-obj.on('foo', function () {
+const obj = Emitter.apply({}); // or new wormhole.Emitter();
+
+obj.on('foo', () => {
   console.log(arguments);
 });
-
 
 obj.emit('foo'); // []
 obj.emit('foo', 1); // [1]
@@ -251,21 +230,22 @@ obj.emit('foo', [1, 2, 3]); // [1, 2, 3]
 Wrapper for `postMessage`.
 
 ```js
+import {cors} from 'wormhole.js';
+
 // Main-frame
-wormhole.cors.on('data', function (data) {
+cors.on('data', (data) => {
 	// ...
 });
 
-wormhole.cors['some:command'] = function (value) {
-	return value * 2;
-};
+cors['some:command'] = (value) => value * 2;
 
 // IFrame
-wormhole.cors(parent).send({foo: 'bar'});
-wormhole.cors(parent).call('some:command', 3, function (err, result) {
-	console.log(result);
+cors(parent).send({foo: 'bar'});
+cors(parent).call('some:command', 3, (err, result) => {
+	console.log('Error:', err, ', Result:', result);
 });
 ```
+
 
 ---
 
@@ -273,25 +253,27 @@ wormhole.cors(parent).call('some:command', 3, function (err, result) {
 #### wormhole.store
 Interface for `localStorage`.
 
- - get(key:`String`):`*`
- - set(key:`String`, value:`*`)
- - remove(key:`String`):`*`
- - on(type:`String`, fn:`Function`)
- - off(type:`String`, fn:`Function`)
+ - **get**(key:`String`):`*`
+ - **set**(key:`String`, value:`*`)
+ - **remove**(key:`String`):`*`
+ - **on**(type:`String`, fn:`Function`)
+ - **off**(type:`String`, fn:`Function`)
 
 ```js
-wormhole.store.on('change', function (key, data) {
+import {store} from 'wormhole.js';
+
+store.on('change', (key, data) => {
 	console.log('change -> ', key, data);
 });
 
-wormhole.store.on('change:prop', function (key, value) {
+store.on('change:prop', (key, value) => {
 	console.log('change:prop -> ', key, value);
 });
 
-wormhole.store.set('foo', {bar: 'baz'});
+store.set('foo', {bar: 'baz'});
 // change -> foo {bar: 'baz'}
 
-wormhole.store.set('prop', {qux: 'ok'});
+store.set('prop', {qux: 'ok'});
 // change -> prop {qux: 'ok'}
 // change:prop -> prop {qux: 'ok'}
 ```
