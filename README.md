@@ -1,6 +1,10 @@
 # Wormhole
 Is EventEmitter for communication between tabs.
 
+```
+npm i --save-dev wormhole.js
+```
+
 
 ### Features
  * Cross-domain communication
