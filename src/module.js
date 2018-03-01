@@ -26,6 +26,7 @@ define(["./now", "./uuid", "./debounce", "./cors", "./emitter", "./store", "./wo
 
 	singletonHole.Hole = Hole;
 	singletonHole.Universal = Hole;
+	singletonHole['default'] = singletonHole;
 
 
 	/* istanbul ignore next */

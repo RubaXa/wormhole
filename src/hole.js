@@ -377,7 +377,7 @@ define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker", "./
 			}
 			else if (evt.type === 'peers') {
 				// Обновляем кол-во пиров
-				this._updPeers(evt.data);
+				this._checkPeers(evt.data);
 			}
 			else {
 //				console.log(this.id, evt.type);

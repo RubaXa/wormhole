@@ -1274,7 +1274,7 @@
 			}
 			else if (evt.type === 'peers') {
 				// Обновляем кол-во пиров
-				this._updPeers(evt.data);
+				this._checkPeers(evt.data);
 			}
 			else {
 //				console.log(this.id, evt.type);
@@ -1647,6 +1647,7 @@
 
 	singletonHole.Hole = Hole;
 	singletonHole.Universal = Hole;
+	singletonHole['default'] = singletonHole;
 
 
 	/* istanbul ignore next */

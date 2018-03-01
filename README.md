@@ -7,7 +7,9 @@ npm i --save-dev wormhole.js
 
 
 ### Features
- * Cross-domain communication
+ * [One connection on WebSocket](#ws) for all tabs.
+ * Support [Master/Slave](#ms)
+ * [Cross-domain communication](#cors)
  * SharedWorker or fallback to localStorage
  * IE 8+, Chrome 10+, FireFox 10+, Opera 10+, Safari 6+
  * Test coverage ([run](http://rubaxa.github.io/wormhole/tests/))
@@ -41,6 +43,37 @@ wormhole().on('master', function () {
 ---
 
 
+<a name="ws"></a>
+
+### One connection on WebSocket for all tabs
+Module `wormhole.js/ws` implements WebSocket-like interface:
+
+
+```js
+import WS from 'wormhole.js/ws';
+
+// Create WebScoket (wormhole-socket)
+const socket = new WS('ws://echo.websocket.org'); // OR new WS('...', null, hole);
+
+socket.onopen = () => console.log('Connected');
+socket.onmessage = ({data}) => console.log('Received:', data);
+
+// Unique event
+socket.onmaster = () => {
+	console.log('Yes, I\'m master!');
+};
+
+// Some tab
+socket.send({foo: 'bar'})
+
+// All tabs:
+//  "Received:" {foo: 'bar'}
+```
+
+---
+
+
+<a name="cors"></a>
 
 ### CORS example
 
@@ -68,6 +101,8 @@ hole.emit('data', 'any data');
 
 ---
 
+
+<a name="ms"></a>
 
 ### Master/slave example
 
