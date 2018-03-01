@@ -1,4 +1,12 @@
-define(['wormhole.js'], function (wormhole) {
+(function umd(factory) {
+	if (typeof define === 'function' && define.amd) {
+		define(['./wormhole'], factory);
+	} else if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+		module.exports = factory(require('./wormhole'));
+	} else {
+		window.wormhole.WS = factory(window.wormhole);
+	}
+})(function factory(wormhole) {
 	'use strict';
 
 	var ns = '__wormhole.js/ws__:';
