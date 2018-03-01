@@ -1,5 +1,5 @@
 # Wormhole
-Is EventEmitter for communication between tabs.
+It's better EventEmitter for communication between tabs with supporting Master/Slave.
 
 ```
 npm i --save-dev wormhole.js

@@ -9,7 +9,7 @@
 		"grunt-contrib-watch": "0.6.1",
 		"grunt-version": "*"
 	},
-	"description": "Wormhole - is EventEmitter for communication between tabs.",
+	"description": "Wormhole — it's better EventEmitter for communication between tabs with supporting Master/Slave.",
 	"main": "wormhole.js",
 	"scripts": {
 		"dev": "grunt dev",
@@ -28,7 +28,9 @@
 		"tabs",
 		"master/slave",
 		"communication",
-		"sharedworker"
+		"sharedworker",
+		"websocket",
+		"persistent"
 	],
 	"author": "Konstantin Lebedev <ibnRubaXa@gmail.com>",
 	"license": "MIT",
