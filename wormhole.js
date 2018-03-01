@@ -1660,7 +1660,7 @@
 
 
 	// Export
-	singletonHole.version = '0.10.0';
+	singletonHole.version = '0.10.1';
 	singletonHole.now = now;
 	singletonHole.uuid = uuid;
 	singletonHole.debounce = debounce;
