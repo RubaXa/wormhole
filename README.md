@@ -47,7 +47,7 @@ wormhole().on('master', function () {
 
 ### One connection on WebSocket for all tabs
 Module `wormhole.js/ws` implements WebSocket-like interface:
-
+https://rubaxa.github.io/wormhole/?ws=y
 
 ```js
 import WS from 'wormhole.js/ws';

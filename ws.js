@@ -29,7 +29,7 @@
 		_this.master = false;
 		_this.url = url;
 		_this.protocols = protocols;
-		_this.hole = hole || wormhole();
+		_this.hole = hole = (hole || wormhole());
 
 		// Meta info about connection state
 		_this.meta = {
@@ -66,7 +66,7 @@
 		} else {
 			hole.call(META_CMD, null, function (err, meta) {
 				err && console.warn('[meta] wormhole.js/ws:', err);
-				meta && this.handleMeta(meta)
+				meta && _this.handleMeta(meta)
 			});
 		}
 	}
@@ -84,8 +84,8 @@
 				!m.error && this.onerror(meta.error);
 			} else if (meta.closed) {
 				!m.closed && this.onclose(meta.closed);
-			} else if (meta.closed === true) {
-				(m.closed !== true) && this.onopen({type: 'open'});
+			} else if (meta.closed === false) {
+				(m.closed !== false) && this.onopen({type: 'open'});
 			}
 		},
 

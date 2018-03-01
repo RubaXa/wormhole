@@ -784,16 +784,15 @@
 
 		/**
 		 * Получить ссылку на работника
-		 * @param   {String} name
+		 * @param   {String} id
 		 * @returns {String}
 		 * @private
 		 */
-		getSharedURL: function (name) {
+		getSharedURL: function (id) {
 			// Код воркера
 			var source = '(' + (function (window) {
 				var ports = [];
 				var master = null;
-
 
 				function checkMaster() {
 					if (!master && (ports.length > 0)) {
@@ -802,13 +801,11 @@
 					}
 				}
 
-
 				function broadcast(data) {
 					ports.forEach(function (port) {
 						port.postMessage(data);
 					});
 				}
-
 
 				function removePort(port) {
 					var idx = ports.indexOf(port);
@@ -823,7 +820,6 @@
 					}
 				}
 
-
 				function peersUpdated() {
 					broadcast({
 						type: 'peers',
@@ -833,8 +829,7 @@
 					});
 				}
 
-
-				// Опришиваем и ищем зомби
+				// Опрашиваем и ищем зомби
 				setTimeout(function next() {
 					var i = ports.length, port;
 
@@ -854,7 +849,6 @@
 					checkMaster();
 					setTimeout(next, 500);
 				}, 500);
-
 
 				window.addEventListener('connect', function (evt) {
 					var port = evt.ports[0];
@@ -889,7 +883,7 @@
 				}, false);
 			}).toString() + ')(this, ' + _stringifyJSON(name) + ')';
 
-			return URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+			return URL.createObjectURL(new Blob([source], {type: 'text/javascript'}));
 		}
 	};
 
@@ -1019,6 +1013,13 @@
 		 * @private
 		 */
 		_this._queue = [];
+
+		/**
+		 * Список уже попробованных sharedUrl
+		 * @type {Object}
+		 * @private
+		 */
+		_this._excludedSharedUrls = {};
 
 
 		/**
@@ -1201,47 +1202,71 @@
 				worker,
 				url = _this.url,
 				label = location.pathname + location.search,
-				sharedUrl = _this._store('sharedUrl')
+				sharedUrls = _this._getSharedUrls(),
+				surl = sharedUrls[0],
+				sid
 			;
 
+			_this._store('shared.url.' + _this.id, null);
 			_this._attempt++;
 
-//			console.log('try(' + _this._attempt + '):', label, retry, [sharedUrl, _this._prevUrl]);
-			if (retry && (_this._prevUrl !== sharedUrl)) {
-				retry = false;
-			}
-			_this._prevUrl = sharedUrl;
-
-			try {
-				sharedUrl = (retry || !sharedUrl) ? Worker.getSharedURL(url) : sharedUrl;
-
-				_this.worker = (worker = Worker.create(sharedUrl));
-				_this.port = (port = worker.port);
-
-				_this._store('sharedUrl', sharedUrl);
-//				console.log('new(' + _this._attempt + '):', label, [sharedUrl]);
-			}
-			catch (err) {
-				if (_this._attempt > 3) {
-					throw err;
-				} else {
-					_this._initSharedWorkerTransport(true);
-				}
+			if (_this._attempt > 10) {
 				return;
 			}
 
+			try {
+				if (!surl) {
+					sid = url + ':' + _this.id;
+					surl = Worker.getSharedURL(sid);
+				}
 
-			worker.addEventListener('error', function (err) {
-//				console.log('error(' + _this._attempt + '):', label, [sharedUrl]);
+				_this._excludedSharedUrls[surl] = true;
+				_this.worker = (worker = Worker.create(surl));
+				_this.port = (port = worker.port);
+
+				_this._store('shared.url.' + _this.id, {
+					url: url,
+					surl: surl,
+				});
+			}
+			catch (err) {
+				console.warn('[wormhole] Worker error:', err);
 				_this._initSharedWorkerTransport(true);
-			}, false);
+			}
 
+			_this.__onPortMessage = function (evt) {
+				_this._onPortMessage(evt);
+			};
 
-			_this.__onPortMessage = function (evt) { _this._onPortMessage(evt); };
+			_this.__onWorkerError = function (evt) {
+				console.warn('[wormhole] Worker error:', evt);
+				worker.removeEventListener('error', _this.__onWorkerError, false);
+				worker = null;
+				_this._initSharedWorkerTransport(true);
+			};
+
+			worker.addEventListener('error', _this.__onWorkerError, false);
 			port.addEventListener('message', _this.__onPortMessage);
 			port.start();
 		},
 
+		_getSharedUrls: function () {
+			var _this = this;
+			var surls = [];
+			var prefix = this._storeKey('shared.url');
+
+			this.store.each(function (data, key) {
+				if (
+					key.indexOf(prefix) !== -1 &&
+					data.url === _this.url &&
+					!_this._excludedSharedUrls[data.surl]
+				) {
+					surls.push(data.surl);
+				}
+			});
+
+			return surls;
+		},
 
 		/**
 		 * Сообщение от рабочего
@@ -1252,8 +1277,6 @@
 			evt = evt.data;
 
 			if (evt === 'CONNECTED') {
-//				console.log(this.id, evt, this._store('sharedUrl'));
-
 				this.emit = this._workerEmit;
 				this.ready = true;
 				this.port.postMessage({ hole: { id: this.id } });
@@ -1596,6 +1619,7 @@
 				this._destroyUnload = null;
 
 				clearTimeout(this._pid);
+				this._store('shared.url.' + this.id, null);
 
 				// Описываем все события
 				this.off();
@@ -1636,7 +1660,7 @@
 
 
 	// Export
-	singletonHole.version = '0.9.0';
+	singletonHole.version = '0.10.0';
 	singletonHole.now = now;
 	singletonHole.uuid = uuid;
 	singletonHole.debounce = debounce;

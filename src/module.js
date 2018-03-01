@@ -15,7 +15,7 @@ define(["./now", "./uuid", "./debounce", "./cors", "./emitter", "./store", "./wo
 
 
 	// Export
-	singletonHole.version = '0.9.0';
+	singletonHole.version = '0.10.0';
 	singletonHole.now = now;
 	singletonHole.uuid = uuid;
 	singletonHole.debounce = debounce;

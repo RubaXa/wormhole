@@ -59,7 +59,7 @@
 		<script type="text/xtpl" ctrl="main">
 			img.image { src: "./st/image-{{ctx.imageNum}}.png" }
 
-			a.holes[href="./"][target="_blank"] | {{ctx.holes}}
+			a.holes[href="./{{location.search}}"][target="_blank"] | {{ctx.holes}}
 
 			.variants > for (idx, num) in ctx.images {
 				.variant {
@@ -77,6 +77,8 @@
 	</div>
 
 	<script src="wormhole.js"></script>
+	<script>/ws=y/i.test(location) && document.write('<script src="ws.js"></' + 'script>');</script>
+
 	<script src="st/xtpl.min.js"></script>
 	<script src="st/app.js"></script>
 

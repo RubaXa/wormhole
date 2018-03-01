@@ -37,16 +37,15 @@ define([], function () {
 
 		/**
 		 * Получить ссылку на работника
-		 * @param   {String} name
+		 * @param   {String} id
 		 * @returns {String}
 		 * @private
 		 */
-		getSharedURL: function (name) {
+		getSharedURL: function (id) {
 			// Код воркера
 			var source = '(' + (function (window) {
 				var ports = [];
 				var master = null;
-
 
 				function checkMaster() {
 					if (!master && (ports.length > 0)) {
@@ -55,13 +54,11 @@ define([], function () {
 					}
 				}
 
-
 				function broadcast(data) {
 					ports.forEach(function (port) {
 						port.postMessage(data);
 					});
 				}
-
 
 				function removePort(port) {
 					var idx = ports.indexOf(port);
@@ -76,7 +73,6 @@ define([], function () {
 					}
 				}
 
-
 				function peersUpdated() {
 					broadcast({
 						type: 'peers',
@@ -86,8 +82,7 @@ define([], function () {
 					});
 				}
 
-
-				// Опришиваем и ищем зомби
+				// Опрашиваем и ищем зомби
 				setTimeout(function next() {
 					var i = ports.length, port;
 
@@ -107,7 +102,6 @@ define([], function () {
 					checkMaster();
 					setTimeout(next, 500);
 				}, 500);
-
 
 				window.addEventListener('connect', function (evt) {
 					var port = evt.ports[0];
@@ -142,7 +136,7 @@ define([], function () {
 				}, false);
 			}).toString() + ')(this, ' + _stringifyJSON(name) + ')';
 
-			return URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+			return URL.createObjectURL(new Blob([source], {type: 'text/javascript'}));
 		}
 	};
 
