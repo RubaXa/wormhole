@@ -268,7 +268,7 @@ Safe and a handy wrapper over `localStorage`.
 
  - **get**(key:`String`):`*`
  - **set**(key:`String`, value:`*`)
- - **remove**(key:`String`):`*`
+ - **remove**(key:`String`)
  - **on**(type:`String`, fn:`Function`)
  - **off**(type:`String`, fn:`Function`)
 
