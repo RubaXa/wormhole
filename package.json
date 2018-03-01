@@ -12,8 +12,10 @@
 	"description": "Wormhole - is EventEmitter for communication between tabs.",
 	"main": "wormhole.js",
 	"scripts": {
+		"dev": "grunt dev",
 		"test": "grunt",
-		"build": "grunt build"
+		"build": "grunt build",
+		"prepublishOnly": "npm run build"
 	},
 	"repository": {
 		"type": "git",
