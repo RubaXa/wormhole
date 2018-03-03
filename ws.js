@@ -145,6 +145,10 @@
 		onclose: function (evt) {},
 		onerror: function (evt) {},
 
+		/**
+		 * Send data to WebSocket
+		 * @param {string} data
+		 */
 		send: function (data) {
 			this.hole.call(SEND_CMD, data);
 		},
