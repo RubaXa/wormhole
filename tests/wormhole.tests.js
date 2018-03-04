@@ -1,14 +1,15 @@
 (function () {
-	module('wormhole');
+	QUnit.module('wormhole');
 
 
-	asyncTest('core', function () {
-		var log = [0, 0, 0],
-			holes = [],
-			_set = function (i) {
-				ok(true, '#' + i);
-				log[i] = 1;
-			};
+	QUnit.test('core', function (assert) {
+		var log = [0, 0, 0];
+		var holes = [];
+		var _set = function (i) {
+			assert.ok(true, '#' + i);
+			log[i] = 1;
+		};
+		var done = assert.async();
 
 
 		var hole = wormhole().on('foo', function () {
@@ -39,11 +40,11 @@
 
 
 		setTimeout(function () {
-			deepEqual(log, [1, 1, 1]);
+			assert.deepEqual(log, [1, 1, 1]);
 			$.each(holes, function (i, hole) {
 				hole.destroy();
 			});
-			start();
+			done();
 		}, 1000);
 	});
 })();

@@ -1,9 +1,9 @@
 (function (Emitter) {
-	module('wormhole.Emitter');
+	QUnit.module('wormhole.Emitter');
 
 
 	// Излучатель: on/off/emit
-	test('core', function () {
+	QUnit.test('core', function (assert) {
 		var log = [];
 		var emitter = new Emitter;
 
@@ -39,11 +39,11 @@
 		emitter.emit('baz', [1, 2, 3]);
 		emitter.emit('baz', [1, 2, 3, 4, 5]);
 
-		equal(log + '', 'foo-1,bar-1,foo-2,bar-2,bar-3,baz-,baz-1.2,baz-1.2.3,baz-1.2.3.4.5');
+		assert.equal(log + '', 'foo-1,bar-1,foo-2,bar-2,bar-3,baz-,baz-1.2,baz-1.2.3,baz-1.2.3.4.5');
 	});
 
 
-	test('__emitter__', function () {
+	QUnit.test('__emitter__', function (assert) {
 		var emitter = new Emitter;
 		var foo = function () {/*foo*/};
 		var bar = function () {/*bar*/};
@@ -53,23 +53,23 @@
 		emitter.on('change', bar);
 		emitter.on('change', bar);
 
-		equal(Emitter.getListeners(emitter, 'change').length, 4);
+		assert.equal(Emitter.getListeners(emitter, 'change').length, 4);
 
 		emitter.off('change', bar);
-		equal(Emitter.getListeners(emitter, 'change').length, 3);
+		assert.equal(Emitter.getListeners(emitter, 'change').length, 3);
 
 		emitter.off('change', bar);
-		equal(Emitter.getListeners(emitter, 'change').length, 2);
+		assert.equal(Emitter.getListeners(emitter, 'change').length, 2);
 
 		emitter.off('change', foo);
-		equal(Emitter.getListeners(emitter, 'change').length, 1);
+		assert.equal(Emitter.getListeners(emitter, 'change').length, 1);
 
 		emitter.off('change', foo);
-		equal(Emitter.getListeners(emitter, 'change').length, 0);
+		assert.equal(Emitter.getListeners(emitter, 'change').length, 0);
 	});
 
 
-	test('one', function () {
+	QUnit.test('one', function (assert) {
 		var log = [];
 		var emitter = new Emitter;
 
@@ -80,6 +80,6 @@
 		emitter.emit('foo', 'ok');
 		emitter.emit('foo', 'fail');
 
-		equal(log + '', 'ok');
+		assert.equal(log + '', 'ok');
 	});
 })(wormhole.Emitter);

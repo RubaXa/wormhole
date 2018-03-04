@@ -21,8 +21,7 @@
 <body>
 
 	<div id="qunit"></div>
-	<div id="qunit-fixture"></div>
-
+	<div id="fixture"></div>
 
 	<script>
 		var useRemoteServer,
@@ -33,7 +32,7 @@
 		QUnit.config.reorder = false;
 
 		var REMOTE_URL = 'http://127.0.0.1:4790/tests/';
-		var $fixture = $('#qunit-fixture');
+		var $fixture = $('#fixture');
 
 		function getUrl(url) {
 			return url
@@ -44,7 +43,9 @@
 
 		function _createWin(url) {
 			var dfd = $.Deferred();
-			$('<iframe src="' + getUrl(url || REMOTE_URL +  'cors.test.html')  + '"/>')
+
+			$('<iframe></iframe>')
+				.prop('src',  getUrl(url || REMOTE_URL +  'cors.test.html'))
 				.load(function (evt) { dfd.resolve(evt.target); })
 				.appendTo($fixture)
 			;

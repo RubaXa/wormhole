@@ -242,55 +242,56 @@ define(["./emitter", "./cors"], function (Emitter, cors) {
 	 * @returns {store}
 	 */
 	store.remote = function (url, ready) {
-		var _data = {},
-			_store = Emitter.apply({
-				set: function (key, name) {
-					_data[key] = name;
+		var _data = {};
+		var _store = Emitter.apply({
+			set: function (key, name) {
+				_data[key] = name;
 
-					_store.emit('change', [key, _data]);
-					_store.emit('change:' + key, [key, _data[key]]);
-				},
+				_store.emit('change', [key, _data]);
+				_store.emit('change:' + key, [key, _data[key]]);
+			},
 
-				get: function (key) {
-					return _data[key];
-				},
+			get: function (key) {
+				return _data[key];
+			},
 
-				remove: function (key) {
-					delete _data[key];
-				},
+			remove: function (key) {
+				delete _data[key];
+			},
 
-				getAll: function () {
-					return _data;
-				},
+			getAll: function () {
+				return _data;
+			},
 
-				each: function (iterator) {
-					for (var key in _data) {
-						if (_data.hasOwnProperty(key)) {
-							iterator(_data, key);
-						}
+			each: function (iterator) {
+				for (var key in _data) {
+					if (_data.hasOwnProperty(key)) {
+						iterator(_data, key);
 					}
 				}
-			}),
+			}
+		});
 
-			iframe = document.createElement('iframe'),
-			adapter = cors(iframe);
-
+		var iframe = document.createElement('iframe');
+		var facade = cors(iframe);
 
 		iframe.onload = function () {
-			adapter.call('register', [], function (err, storeData) {
+			facade.call('register', [], function (err, storeData) {
 				if (storeData) {
 					iframe.onload = null;
 
 					// Получаем данные хранилища
 					for (var key in storeData) {
-						_data[key] = storeData[key];
+						if (storeData.hasOwnProperty(key)) {
+							_data[key] = storeData[key];
+						}
 					}
 
 					// Получаем данные от iframe
 					cors.on('data', function (evt) {
-						var key = evt.key,
-							data = evt.data,
-							value = data[key];
+						var key = evt.key;
+						var data = evt.data;
+						var value = data[key];
 
 						_data[key] = value;
 
@@ -300,13 +301,13 @@ define(["./emitter", "./cors"], function (Emitter, cors) {
 
 					// Установить
 					_store.set = function (key, value) {
-						adapter.call('store', { cmd: 'set', key: key, value: value });
+						facade.call('store', { cmd: 'set', key: key, value: value });
 					};
 
 					// Удалить
 					_store.remove = function (key) {
 						delete _data[key];
-						adapter.call('store', { cmd: 'remove', key: key });
+						facade.call('store', { cmd: 'remove', key: key });
 					};
 
 					ready && ready(_store);
@@ -314,11 +315,9 @@ define(["./emitter", "./cors"], function (Emitter, cors) {
 			});
 		};
 
-
 		iframe.src = url;
 		iframe.style.left = '-1000px';
 		iframe.style.position = 'absolute';
-
 
 		// Пробуем вставить в body
 		(function _tryAgain() {
@@ -328,7 +327,6 @@ define(["./emitter", "./cors"], function (Emitter, cors) {
 				setTimeout(_tryAgain, 100);
 			}
 		})();
-
 
 		return _store;
 	};

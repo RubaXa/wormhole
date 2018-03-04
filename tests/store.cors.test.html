@@ -5,8 +5,9 @@
 	<script src="../wormhole.js"></script>
 	<script>
 		wormhole.store.remote('http://localhost:4791/universal.html', function (store) {
-			console.log('wormhole.store.remote: ready');
-			store.set('foo', 'remote');
+			var rnd = location.search.match(/rnd=([^&]+)/)[1];
+			console.log('wormhole.store.remote: ready', rnd);
+			store.set('foo', 'remote:' + rnd);
 		});
 	</script>
 </head>

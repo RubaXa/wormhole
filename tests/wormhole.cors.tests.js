@@ -1,11 +1,15 @@
 useRemoteServer && (function () {
-	module('wormhole.cors');
-
+	QUnit.module('wormhole.cors');
 
 	// Взаимодействие с удаленным сервером
-	asyncTest('cors', function () {
+	QUnit.test('cors', function (assert) {
 		var cors = wormhole.cors;
+		var done = assert.async();
 
+		var pid = setTimeout(function () {
+			assert.ok(false, 'timeout');
+			done();
+		}, 3000)
 
 		// Создаем два iframe
 		$.when(_createWin(), _createWin()).then(function (foo, bar) {
@@ -46,17 +50,16 @@ useRemoteServer && (function () {
 
 			// Проверям результат
 			setTimeout(function () {
-				deepEqual(log, [
+				clearTimeout(pid);
+				assert.deepEqual(log, [
 					'Wow!',
 					'well done',
 					{ bar: true, value: 642 },
 					'wormhole.cors.unknown: method not found',
 					'wormhole.cors.fail: remote error'
 				]);
-				start();
+				done();
 			}, 100);
 		});
 	});
-
-
 })();

@@ -1,5 +1,5 @@
 (function _tryAgainTest(useStore) {
-	module('wormhole.Hole.' + (useStore ? 'store' : 'worker'));
+	QUnit.module('wormhole.Hole.' + (useStore ? 'store' : 'worker'));
 
 	var ie8 = /MSIE 8/.test(navigator.userAgent);
 
@@ -22,21 +22,22 @@
 	}
 
 
-	asyncTest('core', function () {
+	QUnit.test('core', function (assert) {
 		var log = [];
 		var fooLog = [];
 		var url = 'local.test.html?core';
 		var main = newHole(null, url);
+		var done = assert.async()
 
 
 		main
 			.emit('xxx')
 			.on('ready', function (hole) {
 				if (useStore) {
-					ok(hole.emit === hole._storeEmit, 'sotreEmit');
+					assert.ok(hole.emit === hole._storeEmit, 'sotreEmit');
 				} else {
-					ok(hole.worker instanceof window.SharedWorker, 'instanceof');
-					ok(hole.emit === hole._workerEmit, 'workerEmit');
+					assert.ok(hole.worker instanceof window.SharedWorker, 'instanceof');
+					assert.ok(hole.emit === hole._workerEmit, 'workerEmit');
 				}
 
 				log.push('ready:' + hole.id);
@@ -85,21 +86,22 @@
 		setTimeout(function () {
 			main.destroy();
 
-			deepEqual(log, [
+			assert.deepEqual(log, [
 				'ready:' + main.id,
 				'master:' + main.id,
 				'master:slave'
 			]);
 
-			start();
+			done();
 		}, 1500);
 	});
 
 
 	// Проверка peers
-	asyncTest('peers', function () {
+	QUnit.test('peers', function (assert) {
 		var max = 10; // кол-во iframe
 		var tabs = [];
+		var done = assert.async();
 
 		function holes() {
 			for (var i = 0; i < max; i++) {
@@ -114,34 +116,37 @@
 			return $.when.apply($, tabs);
 		}
 
+		// Первая пачка по 10 iframe
 		holes().then(function (tab) {
 			var count = 0;
 
 			arguments[Math.floor(max/2)].on('peers', function (peers) {
 				count = peers.length;
-				ok(true, 'count: ' + count);
+				assert.ok(true, '#1.count: ' + count);
 			});
 
 			setTimeout(function () {
-				equal(count, max, 'total: ' + max);
-				equal(tab.length, max, 'length: ' + max);
+				assert.equal(count, max, '#2.total: ' + max);
+				assert.equal(tab.length, max, '#2.length: ' + max);
 
+				// Вторая пачка по 10 iframe
 				holes().then(function () {
 					setTimeout(function () {
-						equal(count, max*2, 'total: ' + max*2);
-						equal(tab.length, max*2, 'length: ' + max*2);
+						assert.equal(count, max*2, '#3.total: ' + max*2);
+						assert.equal(tab.length, max*2, '#3.length: ' + max*2);
 
+						// Третья пачка по 10 iframe
 						holes().then(function () {
 							var tabs = [].slice.call(arguments);
 							var removeCnt = 7;
 
 							setTimeout(function () {
-								equal(count, max*3, 'total: ' + max*3);
-								equal(tab.length, max*3, 'length: ' + max*3);
+								assert.equal(count, max*3, '#4.total: ' + max*3);
+								assert.equal(tab.length, max*3, '#4.length: ' + max*3);
 
 								tab = tabs[10].on('peers', function (peers) {
 									count = peers.length;
-									ok(true, '10.count: ' + count);
+									assert.ok(true, '#5.10.count: ' + count);
 								});
 
 								$.each(tabs.splice(0, removeCnt), function (i, hole) {
@@ -150,12 +155,12 @@
 								});
 
 								setTimeout(function () {
-									equal(count, max*3 - removeCnt, 'total: ' + (max*3 - removeCnt));
-									equal(tab.length, max*3 - removeCnt, 'length: ' + (max*3 - removeCnt));
+									assert.equal(count, max*3 - removeCnt, '#6.total: ' + (max*3 - removeCnt));
+									assert.equal(tab.length, max*3 - removeCnt, '#6.length: ' + (max*3 - removeCnt));
 
 									tab = tabs.pop().on('peers', function (peers) {
 										count = peers.length;
-										ok(true, 'pop.count: ' + count);
+										assert.ok(true, '#7.pop.count: ' + count);
 									});
 
 									$.each(tabs, function (i, hole) {
@@ -164,24 +169,25 @@
 									});
 
 									setTimeout(function () {
-										equal(count, 1, 'total: 1');
-										equal(tab.length, 1, 'length: 1');
-										start();
+										assert.equal(count, 1, '#8.total: 1');
+										assert.equal(tab.length, 1, '#8.length: 1');
+										done();
 									}, 1000);
-								}, 1000);
-							}, 1000);
+								}, 2000);
+							}, 2000);
 						});
-					}, 1000);
+					}, 2000);
 				});
-			}, 1000);
+			}, 2000);
 		});
 	});
 
 
 	// Проверка событий
-	asyncTest('peers:events', function () {
-		var actual = {},
-			expected = {};
+	QUnit.test('peers:events', function (assert) {
+		var actual = {};
+		var expected = {};
+		var done = assert.async();
 
 		createHole('local.test.html?peers:event').then(function (hole) {
 			expected['add:' + hole.id] = 1;
@@ -206,12 +212,12 @@
 					});
 
 					setTimeout(function () {
-						equal(someHole.length, 2, 'length');
+						assert.equal(someHole.length, 2, 'length');
 						hole.destroy();
 
 						setTimeout(function () {
-							deepEqual(actual, expected);
-							start();
+							assert.deepEqual(actual, expected);
+							done();
 						}, 100);
 					}, 100);
 				});
@@ -221,11 +227,12 @@
 
 
 	// Проверка на мастер
-	asyncTest('master', function () {
+	QUnit.test('master', function (assert) {
 		var max = 10; // кол-во iframe
 		var tabs = [];
 		var log = [];
 		var pid;
+		var done = assert.async();
 
 
 		for (var i = 0; i < max; i++) {
@@ -240,7 +247,7 @@
 //						console.log('hole.ready: ' + this.id);
 					})
 					.on('master', function (hole) {
-						ok(true, '#' + i + ':' + hole.id);
+						assert.ok(true, '#' + i + ':' + hole.id);
 						log.push(hole.id);
 
 						ie8 && hole.destroy();
@@ -248,19 +255,20 @@
 
 						clearTimeout(pid);
 						pid = setTimeout(function () {
-							equal(log.length, max); // кол-во мастеров
+							assert.equal(log.length, max); // кол-во мастеров
 
 							$.each(log, function (idx, id) {
 								for (var i = idx; i < log.length; i++) {
 									if (log[i] === id) {
-										ok(true, '#' + idx);
+										assert.ok(true, '#' + idx);
 										return;
 									}
 								}
 
-								ok(false, '#' + idx);
+								assert.ok(false, '#' + idx);
 							});
-							start();
+
+							done();
 						}, 1500);
 					});
 			});
@@ -269,17 +277,16 @@
 
 
 	// Проверяем события между воркерами (в рамках одного домена)
-	asyncTest('events', function () {
+	QUnit.test('events', function () {
 		var max = 10; // кол-во iframe
 		var tabs = [];
 		var syncLogs = {};
 		var asyncLogs = {};
-
+		var done = assert.async();
 
 		for (var i = 0; i < max; i++) {
 			tabs.push(_createWin('local.test.html?hole=' + i));
 		}
-
 
 		$.when.apply($, tabs).then(function () {
 			$.each(arguments, function (i, el) {
@@ -302,37 +309,36 @@
 			});
 
 			setTimeout(function () {
-				equal(syncLogs[0] && syncLogs[0].length, max, 'sync.length');
-				equal(asyncLogs[0] && asyncLogs[0].length, max, 'async.length');
+				assert.equal(syncLogs[0] && syncLogs[0].length, max, 'sync.length');
+				assert.equal(asyncLogs[0] && asyncLogs[0].length, max, 'async.length');
 
 				for (var i = 0; i < max; i++) {
-
-					deepEqual(syncLogs[i], syncLogs[0], 'hole.sync #' + i);
-					deepEqual(asyncLogs[i], asyncLogs[0], 'hole.async #' + i);
+					assert.deepEqual(syncLogs[i], syncLogs[0], 'hole.sync #' + i);
+					assert.deepEqual(asyncLogs[i], asyncLogs[0], 'hole.async #' + i);
 				}
 
-				start();
+				done();
 			}, 1500);
 		}, function () {
-			ok(false, 'fail');
-			start();
+			assert.ok(false, 'fail');
+			done();
 		});
 	});
 
 
 	// Проверка вызова удаленных команд
-	asyncTest('cmd', function () {
-		var url = 'local.test.html?cmd',
-			actual = {},
-			expected = {},
-			
-			_finish = wormhole.debounce(function () {
-				deepEqual(actual, expected);
-				start();
-			}, 600),
+	QUnit.test('cmd', function () {
+		var url = 'local.test.html?cmd';
+		var actual = {};
+		var expected = {};
+		var done = assert.async()
+		var _finish = wormhole.debounce(function () {
+			assert.deepEqual(actual, expected);
+			done();
+		}, 600),
 
 			_set = function (key, value) {
-				ok(!(key in actual), key + ((key in actual) ? ' - already added' : ''));
+				assert.ok(!(key in actual), key + ((key in actual) ? ' - already added' : ''));
 				actual[key] = value;
 				_finish();
 			}
@@ -364,19 +370,19 @@
 			};
 
 			foo.sync = function _(data, next) {
-				ok(true, 'foo.async');
+				assert.ok(true, 'foo.async');
 				next(null, data);
 			};
 
 			foo.async = function _(data, next) {
-				ok(true, 'foo.async');
+				assert.ok(true, 'foo.async');
 				setTimeout(function () {
 					next(null, data);
 				}, 10);
 			};
 
 			foo.fail = function () {
-				ok(true, 'foo.fail');
+				assert.ok(true, 'foo.fail');
 				throw "BOOM!";
 			};
 
@@ -416,7 +422,6 @@
 					// Уничтожаем foo, bar должен стать мастером
 					foo.destroy();
 
-
 					// Hard level
 					setTimeout(function () {
 						newTabHole().then(function (baz) {
@@ -428,10 +433,10 @@
 							});
 
 							baz.async = function (data, next) {
-								ok(true, 'baz.async');
+								assert.ok(true, 'baz.async');
 
 								setTimeout(function () {
-									ok(true, 'baz.async.next');
+									assert.ok(true, 'baz.async.next');
 									next(null, data.reverse());
 								}, 50);
 							};

@@ -1,14 +1,15 @@
 (function (wormhole) {
-	module('wormhole.Universal');
+	QUnit.module('wormhole.Universal');
 
 
-	asyncTest('peers', function () {
-		var rnd = Math.random(),
-			log = [],
-			hole = new wormhole.Universal('http://localhost:4791/universal.html', true);
+	QUnit.test('peers', function (assert) {
+		var rnd = Math.random();
+		var log = [];
+		var hole = new wormhole.Universal('http://localhost:4791/universal.html', true);
+		var done = assert.async();
 
 		hole.on('local', function (val) {
-			ok(true, 'local: ' + val);
+			assert.ok(true, 'local: ' + val);
 			log.push(val);
 		});
 
@@ -21,7 +22,7 @@
 
 				setTimeout(function () {
 					deepEqual(log, [1, 2, rnd + '!'], 'remote -> local');
-					start();
+					done();
 				}, 50);
 			}, 500);
 		});

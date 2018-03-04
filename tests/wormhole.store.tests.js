@@ -1,18 +1,19 @@
 (function () {
-	module('wormhole.store');
+	QUnit.module('wormhole.store');
 
 
 	// Проверяем работу хранилища и его изменения
-	asyncTest('local', function () {
+	QUnit.test('local', function (assert) {
 		var log = [];
 		var store = wormhole.store;
 		var rand = Math.random();
+		var done = assert.async();
 
-		ok(store.enabled, 'enabled');
+		assert.ok(store.enabled, 'enabled');
 
 		// Подписываемся на изменение данных
 		store.on('change:' + rand, function (data) {
-			equal(data, rand);
+			assert.equal(data, rand);
 			log.push('rand-val');
 		});
 
@@ -36,21 +37,21 @@
 			var winStore = el.contentWindow.wormhole.store;
 
 			// Сверяем значения
-			equal(winStore.get('rand'), rand);
+			assert.equal(winStore.get('rand'), rand);
 
 			// Устанавливаем какое-то значения, для проверки событий
 			winStore.set('foo', rand);
 
 			// Выставляем значение и сразу читаем его
 			store.set('bar', rand);
-			equal(winStore.get('bar'), rand, 'bar.rand');
+			assert.equal(winStore.get('bar'), rand, 'bar.rand');
 
 			winStore.set('bar', rand + '!');
-			equal(store.get('bar'), rand + '!', 'bar.rand!');
+			assert.equal(store.get('bar'), rand + '!', 'bar.rand!');
 
 			setTimeout(function () {
 				// Проверяем события
-				deepEqual(log, [
+				assert.deepEqual(log, [
 					'rand-val',
 					'change',
 					'change',
@@ -59,40 +60,46 @@
 				]);
 
 				// Чтение
-				equal(store.get('foo'), rand);
+				assert.equal(store.get('foo'), rand);
 
 				// Удаление
 				store.remove('foo');
-				equal(store.get('foo'), void 0);
+				assert.equal(store.get('foo'), void 0);
 
-				start();
+				done();
 			}, 100);
 		});
 	});
 
 
-	asyncTest('remote', function () {
-		var log = [],
-			rnd = Math.random(),
-			store = wormhole.store.remote('http://localhost:4791/universal.html', function (_store) {
-				equal(store, _store, 'ready');
-				_store.set('foo', rnd);
-			});
+	QUnit.test('remote', function (assert) {
+		var log = [];
+		var rnd = Math.random();
+		var remoteRnd = Math.random();
+		var store = wormhole.store.remote('http://localhost:4791/universal.html', function (_store) {
+			assert.equal(store, _store, 'ready');
+			_store.set('foo', 'self:' + rnd);
+		});
+		var done = assert.async();
 
-
-		store.on('change', function (key) {
-			log.push(key);
+		store.on('change', function (key, data) {
+			log.push('all->' + key + ':' + data[key]);
 		});
 
 		store.on('change:foo', function (key, val) {
-			log.push(val);
+			log.push('foo.prop->' + val);
 		});
 
-		_createWin('remote:store.cors.test.html').always(function () {
+		_createWin('remote:store.cors.test.html?rnd=' + remoteRnd).always(function () {
 			setTimeout(function () {
-				deepEqual(log, ['foo', rnd, 'foo', 'remote']);
-				start();
-			}, 1000);
+				assert.deepEqual(log, [
+					'all->foo:self:' + rnd,
+					'foo.prop->self:' + rnd,
+					'all->foo:remote:' + remoteRnd,
+					'foo.prop->remote:' + remoteRnd
+				]);
+				done();
+			}, 2000);
 		});
 	});
 })();
