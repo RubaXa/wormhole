@@ -24,15 +24,11 @@
 	<div id="fixture"></div>
 
 	<script>
-		var useRemoteServer,
-			wormhole = {
-				workers: true
-			};
-
-		QUnit.config.reorder = false;
-
+		var useRemoteServer;
 		var REMOTE_URL = 'http://127.0.0.1:4790/tests/';
 		var $fixture = $('#fixture');
+
+		QUnit.config.reorder = false;
 
 		function getUrl(url) {
 			return url

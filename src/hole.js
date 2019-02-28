@@ -388,7 +388,9 @@ define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker", "./
 			if (evt === 'CONNECTED') {
 				this.emit = this._workerEmit;
 				this.ready = true;
-				this.port.postMessage({ hole: { id: this.id } });
+				this.port.postMessage({
+					hole: {id: this.id}
+				});
 
 				this._processingQueue();
 
@@ -397,21 +399,26 @@ define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker", "./
 			}
 			else if (evt === 'PING') {
 				// Ping? Pong!
-				this.port.postMessage('PONG');
+				setTimeout(pong, 0, this.port);
 			}
 			else if (evt === 'MASTER') {
 				// Сказали, что мы теперь мастер
 				this.master = true; // ОК
 				_emitterEmit.call(this, 'master', this);
 			}
+			else if (evt === 'ADDED' || evt === 'REMOVED') {
+				console.warn(this.id, evt);
+				// this.destroy();
+			}
 			else if (evt.type === 'peers') {
 				// Обновляем кол-во пиров
 				this._checkPeers(evt.data);
+				// console.log(this.id, evt);
 			}
 			else {
-//				console.log(this.id, evt.type);
 				// Просто событие
 				_emitterEmit.call(this, evt.type, evt.data);
+				// console.log(this.id, evt);
 			}
 		},
 
@@ -750,6 +757,9 @@ define(["./now", "./uuid", "./debounce", "./emitter", "./store", "./worker", "./
 		}
 	};
 
+	function pong(port) {
+		port.postMessage('PONG');
+	}
 
 	// Export
 	return Hole;

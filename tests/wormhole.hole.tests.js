@@ -101,85 +101,93 @@
 	QUnit.test('peers', function (assert) {
 		var max = 10; // кол-во iframe
 		var tabs = [];
+		var holes = [];
 		var done = assert.async();
 
-		function holes() {
-			for (var i = 0; i < max; i++) {
+		function createHoles(count, wait) {
+			assert.ok(true, 'Holes: ' + count);
+			var start =  tabs.length;
+
+			for (var i = start; i < count; i++) {
 				/* jshint loopfunc:true */
-				tabs.push(_createWin('local.test.html?peers=' + i).then(function (el) {
+				tabs.push(_createWin('local.test.html?peers=' + i).then(function (wait, el) {
 					var hole = newHole(el, 'local.test.html?peers');
 					hole.el = el;
+					holes.push(hole);
+					if (wait) {
+						return waitPeers(hole, count).then(function () {
+							return hole;
+						})
+					}
 					return hole;
-				}));
+				}.bind(null, wait && i === start)));
 			}
 
-			return $.when.apply($, tabs);
+			return $.when.apply($, tabs).then(function () {
+				return [].slice.call(arguments);
+			});
 		}
 
-		// Первая пачка по 10 iframe
-		holes().then(function (tab) {
-			var count = 0;
+		function waitPeers(hole, count) {
+			var cnt = -1;
+			var dfd = $.Deferred();
+			var peers = [];
+			var pid = setTimeout(function () {
+				cnt = 'TIMEOUT';
+				end();
+				dfd.reject();
+			}, 15000);
 
-			arguments[Math.floor(max/2)].on('peers', function (peers) {
-				count = peers.length;
-				assert.ok(true, '#1.count: ' + count);
-			});
+			function end() {
+				clearTimeout(pid);
+				hole.off('peers', handle);
 
-			setTimeout(function () {
-				assert.equal(count, max, '#2.total: ' + max);
-				assert.equal(tab.length, max, '#2.length: ' + max);
+				assert.equal(cnt, count, ' - Peers: ' + count);
+				assert.equal(holes.length, count, ' - Holes: ' + count);
 
-				// Вторая пачка по 10 iframe
-				holes().then(function () {
-					setTimeout(function () {
-						assert.equal(count, max*2, '#3.total: ' + max*2);
-						assert.equal(tab.length, max*2, '#3.length: ' + max*2);
-
-						// Третья пачка по 10 iframe
-						holes().then(function () {
-							var tabs = [].slice.call(arguments);
-							var removeCnt = 7;
-
-							setTimeout(function () {
-								assert.equal(count, max*3, '#4.total: ' + max*3);
-								assert.equal(tab.length, max*3, '#4.length: ' + max*3);
-
-								tab = tabs[10].on('peers', function (peers) {
-									count = peers.length;
-									assert.ok(true, '#5.10.count: ' + count);
-								});
-
-								$.each(tabs.splice(0, removeCnt), function (i, hole) {
-									ie8 && hole.destroy();
-									$(hole.el).remove();
-								});
-
-								setTimeout(function () {
-									assert.equal(count, max*3 - removeCnt, '#6.total: ' + (max*3 - removeCnt));
-									assert.equal(tab.length, max*3 - removeCnt, '#6.length: ' + (max*3 - removeCnt));
-
-									tab = tabs.pop().on('peers', function (peers) {
-										count = peers.length;
-										assert.ok(true, '#7.pop.count: ' + count);
-									});
-
-									$.each(tabs, function (i, hole) {
-										ie8 && hole.destroy();
-										$(hole.el).remove();
-									});
-
-									setTimeout(function () {
-										assert.equal(count, 1, '#8.total: 1');
-										assert.equal(tab.length, 1, '#8.length: 1');
-										done();
-									}, 1000);
-								}, 2000);
-							}, 2000);
-						});
-					}, 2000);
+				var exists = peers.filter(function (id) {
+					return holes.some(function (p) {
+						return p.id == id;
+					});
 				});
-			}, 2000);
-		});
+
+				assert.equal(exists.length, holes.length, ' - Exists peers');
+			}
+
+			function handle(list) {
+				cnt = list.length;
+				peers = list;
+
+				if (cnt === count) {
+					end();
+					dfd.resolve();
+				}
+			}
+
+			hole.on('peers', handle);
+
+			return dfd;
+		}
+
+		$.Deferred().resolve()
+			.then(function () { return createHoles(max, true); })
+			.then(function () { return createHoles(max * 2, true); })
+			.then(function () { return createHoles(max * 5, true); })
+			.then(function () {
+				var toRemove = 17;
+				var promise = waitPeers(holes[toRemove], holes.length - toRemove);
+
+				holes.splice(0, toRemove).forEach(function (hole) {
+					ie8 && hole.destroy();
+					$(hole.el).remove();
+				});
+
+				return promise;
+			})
+			.then(function () { return createHoles(max * 10, true); })
+			.always(function () {
+				done();
+			})
 	});
 
 

@@ -788,98 +788,123 @@
 		 */
 		getSharedURL: function (id) {
 			// Код воркера
-			var source = '(' + (function (window) {
+			var source = '(' + (function (window, debounce) {
 				var ports = [];
 				var master = null;
 
-				function checkMaster() {
+				var checkMaster = function () {
 					if (!master && (ports.length > 0)) {
 						master = ports[0];
 						master.postMessage('MASTER');
 					}
-				}
+				};
 
-				function broadcast(data) {
+				var broadcast = function (data) {
 					ports.forEach(function (port) {
 						port.postMessage(data);
 					});
-				}
+				};
 
-				function removePort(port) {
+				var removePort = function (port) {
 					var idx = ports.indexOf(port);
-
-					if (idx > -1) {
-						ports.splice(idx, 1);
-						peersUpdated();
-					}
 
 					if (port === master) {
 						master = null;
 					}
-				}
 
-				function peersUpdated() {
+					if (idx > -1) {
+						port.postMessage('REMOVED');
+						ports.splice(idx, 1);
+						peersUpdated();
+					}
+				};
+
+				var peersUpdated = debounce(function () {
+					checkMaster();
 					broadcast({
 						type: 'peers',
-						data: ports.map(function (port) {
-							return port.holeId;
-						})
+						data: ports.reduce(function (peers, port) {
+							port.holeId && peers.push(port.holeId);
+							return peers;
+						}, [])
 					});
-				}
+				}, 300);
 
-				// Опрашиваем и ищем зомби
-				setTimeout(function next() {
-					var i = ports.length, port;
+				var pingService = function () {
+					var ts = Date.now();
 
-					while (i--) {
-						port = ports[i];
+					ports.forEach(function (port) {
+						var delta = ts - port.lastActivity;
 
-						if (port.zombie) {
+						if (delta > 15000) {
 							// Убиваем зомби
 							removePort(port);
+						} else if (delta >= 1000) {
+							setTimeout(ping, 0, port);
 						}
-						else {
-							port.zombie = true; // Помечаем как зомби
-							port.postMessage('PING');
-						}
-					}
+					});
 
-					checkMaster();
-					setTimeout(next, 500);
-				}, 500);
+					setTimeout(pingService, 1000);
+				};
+
+				var ping = function (port) {
+					if (port.pingPong) {
+						port.pingPong = false; // помечаем порт как не активный
+						// port.pingTime = Date.now();
+						port.postMessage('PING');
+					}
+				};
 
 				window.addEventListener('connect', function (evt) {
-					var port = evt.ports[0];
+					evt.ports.forEach(function (port) {
+						ports.push(port);
 
-					port.onmessage = function (evt) {
-						var data = evt.data;
+						port.pingPong = true; // любая активность порта
+						port.lastActivity = Date.now();
 
-						if (data === 'PONG') {
-							port.zombie = false; // живой порт
-						}
-						else if (data === 'DESTROY') {
-							// Удаляем порт
-							removePort(port);
-							checkMaster();
-						}
-						else if (data.hole) {
-							// Обновление meta информации
-							port.holeId = data.hole.id;
-							peersUpdated();
-						}
-						else {
-							broadcast({ type: data.type, data: data.data });
-						}
-					};
+						port.onmessage = function (evt) {
+							var data = evt.data;
 
-					ports.push(port);
+							port.pingPong = true;
+							port.lastActivity = Date.now();
 
-					port.start();
-					port.postMessage('CONNECTED');
+							if (data === 'PONG') {
+								// Ничего не делаем
+								// port.postMessage({
+								// 	type: 'PONG',
+								// 	detail: Date.now() - port.pingTime,
+								// })
+								if (ports.indexOf(port) > -1) {
+									ports.push(port);
+									port.postMessage('ADDED');
+								}
+							} else if (data === 'DESTROY') {
+								// Удаляем порт
+								removePort(port);
+							} else if (data.hole) {
+								// Обновление meta информации
+								port.holeId = data.hole.id;
+								peersUpdated();
+							} else {
+								broadcast({
+									type: data.type,
+									data: data.data
+								});
+							}
+						};
 
-					checkMaster();
+						port.start();
+						port.postMessage('CONNECTED');
+						checkMaster();
+					});
 				}, false);
-			}).toString() + ')(this, ' + _stringifyJSON(name) + ')';
+
+				pingService();
+			}).toString() + ')(' + [
+				'this',
+				debounce.toString(),
+				_stringifyJSON(name)
+			] + ')';
 
 			return URL.createObjectURL(new Blob([source], {type: 'text/javascript'}));
 		}
@@ -1277,7 +1302,9 @@
 			if (evt === 'CONNECTED') {
 				this.emit = this._workerEmit;
 				this.ready = true;
-				this.port.postMessage({ hole: { id: this.id } });
+				this.port.postMessage({
+					hole: {id: this.id}
+				});
 
 				this._processingQueue();
 
@@ -1286,21 +1313,26 @@
 			}
 			else if (evt === 'PING') {
 				// Ping? Pong!
-				this.port.postMessage('PONG');
+				setTimeout(pong, 0, this.port);
 			}
 			else if (evt === 'MASTER') {
 				// Сказали, что мы теперь мастер
 				this.master = true; // ОК
 				_emitterEmit.call(this, 'master', this);
 			}
+			else if (evt === 'ADDED' || evt === 'REMOVED') {
+				console.warn(this.id, evt);
+				// this.destroy();
+			}
 			else if (evt.type === 'peers') {
 				// Обновляем кол-во пиров
 				this._checkPeers(evt.data);
+				// console.log(this.id, evt);
 			}
 			else {
-//				console.log(this.id, evt.type);
 				// Просто событие
 				_emitterEmit.call(this, evt.type, evt.data);
+				// console.log(this.id, evt);
 			}
 		},
 
@@ -1639,6 +1671,9 @@
 		}
 	};
 
+	function pong(port) {
+		port.postMessage('PONG');
+	}
 
 	
 
